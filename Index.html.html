@@ -1,0 +1,4168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ViceChair Prose Editor</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:Georgia,serif;background:#1a1a18;color:#d4cfc0;min-height:100vh;}
+.app{display:grid;grid-template-columns:210px 1fr 300px;grid-template-rows:48px 1fr;height:100vh;}
+
+/* ── MOBILE LAYOUT ────────────────────────────────── */
+@media(max-width:700px){
+  .app{display:flex;flex-direction:column;height:100vh;height:100dvh;}
+  .topbar{flex-shrink:0;padding:0 10px;gap:6px;overflow-x:auto;}
+  .topbar .brand{display:none;}
+  .save-badge{display:none;}
+  .btn{padding:5px 10px;font-size:11px;white-space:nowrap;}
+  .sidebar,.editor,.preview-panel{
+    flex:1;min-height:0;overflow-y:auto;
+    display:none;
+  }
+  .sidebar.mobile-active,
+  .editor.mobile-active,
+  .preview-panel.mobile-active{display:block;}
+  .tab-bar{
+    display:flex;flex-shrink:0;
+    background:#111110;border-top:1px solid #2a2a27;
+    height:52px;
+  }
+  .tab-btn{
+    flex:1;display:flex;flex-direction:column;align-items:center;
+    justify-content:center;gap:2px;
+    font-size:10px;color:#555;letter-spacing:.06em;text-transform:uppercase;
+    cursor:pointer;border:none;background:transparent;font-family:Georgia,serif;
+    border-top:2px solid transparent;
+  }
+  .tab-btn.active{color:#c8b97a;border-top-color:#8a7a5a;}
+  .tab-btn .tab-icon{font-size:16px;line-height:1;}
+  .nav-item{padding:12px 16px;font-size:14px;}
+  .nav-count{font-size:11px;}
+  .entry-row{padding:12px;}
+  .entry-txt{font-size:14px;}
+  .del-btn{opacity:1;padding:5px 10px;font-size:12px;}
+  .tag{padding:6px 10px;font-size:12px;}
+  textarea,input[type=text],select{font-size:15px;padding:10px;}
+  .add-row{padding:14px;font-size:13px;}
+  .pv-box{font-size:14px;line-height:1.9;}
+  .editor{padding:14px 16px;}
+  .preview-panel{padding:14px 16px;}
+  .export-area{font-size:12px;}
+}
+
+/* ── DESKTOP: hide tab bar ────────────────────────── */
+@media(min-width:701px){
+  .tab-bar{display:none;}
+  .sidebar,.editor,.preview-panel{display:block !important;}
+}
+.topbar{grid-column:1/-1;background:#111110;border-bottom:1px solid #333;display:flex;align-items:center;padding:0 16px;gap:12px;}
+.topbar .brand{font-size:13px;color:#888;letter-spacing:.08em;text-transform:uppercase;margin-right:auto;}
+.save-badge{font-size:11px;color:#555;font-style:italic;}
+.save-badge.saved{color:#7a9a6a;}
+.btn{padding:6px 14px;font-size:12px;font-family:Georgia,serif;border:1px solid #444;background:transparent;color:#aaa;cursor:pointer;letter-spacing:.04em;}
+.btn:hover{background:#252522;color:#d4cfc0;}
+.btn-gold{border-color:#8a7a5a;color:#c8b97a;}
+.btn-gold:hover{background:#2a2518;color:#e0cd90;}
+.sidebar{grid-row:2;background:#141412;border-right:1px solid #2a2a27;overflow-y:auto;padding:10px 0;}
+.nav-group{padding:8px 12px 3px;font-size:10px;color:#444;letter-spacing:.12em;text-transform:uppercase;margin-top:4px;}
+.nav-item{padding:7px 16px;font-size:13px;color:#777;cursor:pointer;border-left:2px solid transparent;display:flex;align-items:center;justify-content:space-between;}
+.nav-item:hover{color:#b8b090;background:#1c1c19;}
+.nav-item.active{color:#c8b97a;border-left-color:#8a7a5a;background:#1e1d19;}
+.nav-count{font-size:10px;color:#444;}
+.editor{grid-row:2;overflow-y:auto;padding:20px 24px;}
+.ed-header{margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid #2a2a27;}
+.ed-header h2{font-size:17px;font-weight:400;color:#c0b090;font-style:italic;margin-bottom:3px;}
+.ed-header p{font-size:11px;color:#555;}
+.entry-card{background:#161614;border:1px solid #262624;margin-bottom:8px;}
+.entry-card.open{border-color:#8a7a5a;}
+.entry-row{padding:9px 12px;display:flex;align-items:flex-start;gap:10px;cursor:pointer;}
+.entry-row:hover{background:#1c1c19;}
+.entry-idx{font-size:10px;color:#444;letter-spacing:.06em;min-width:44px;margin-top:2px;flex-shrink:0;}
+.entry-txt{font-size:13px;color:#a8a088;font-style:italic;flex:1;line-height:1.5;}
+.entry-txt.empty{color:#333;font-style:normal;}
+.del-btn{opacity:0;padding:2px 7px;font-size:11px;border:1px solid #333;background:transparent;color:#665;cursor:pointer;flex-shrink:0;}
+.entry-card:hover .del-btn{opacity:1;}
+.del-btn:hover{color:#c87a7a;border-color:#8a5a5a;}
+.edit-body{display:none;padding:12px;border-top:1px solid #222;background:#101010;}
+.edit-body.open{display:block;}
+.fl{font-size:10px;color:#555;letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px;margin-top:10px;}
+.fl:first-child{margin-top:0;}
+textarea,input[type=text],select{width:100%;background:#1a1a17;border:1px solid #2e2e2a;color:#c0b898;font-family:Georgia,serif;font-size:13px;padding:7px 9px;resize:vertical;}
+textarea:focus,input:focus,select:focus{outline:none;border-color:#8a7a5a;}
+select option{background:#1a1a17;}
+.tag-row{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px;}
+.tag{padding:3px 8px;font-size:11px;border:1px solid #2e2e2a;color:#666;cursor:pointer;user-select:none;}
+.tag:hover{border-color:#555;color:#999;}
+.tag.on{border-color:#8a7a5a;color:#c8b97a;background:#1e1d19;}
+.tag.on-red{border-color:#8a5a5a;color:#c87a7a;background:#1e1918;}
+.reskin-grid{display:grid;grid-template-columns:90px 1fr;gap:3px;align-items:start;margin-bottom:4px;}
+.rsk-lbl{font-size:11px;color:#555;padding-top:8px;}
+.form-btns{margin-top:10px;display:flex;gap:6px;}
+.add-row{border:1px dashed #252522;padding:9px;text-align:center;color:#444;cursor:pointer;font-size:12px;margin-top:4px;}
+.add-row:hover{border-color:#555;color:#777;}
+.sample-preview{font-style:italic;color:#8a7f63;background:#161512;border:1px solid #2e2e2a;padding:8px 10px;font-size:12.5px;line-height:1.5;}
+.var-hint{font-size:10.5px;color:#555;margin-bottom:4px;}
+.nav-group{cursor:pointer;user-select:none;display:flex;justify-content:space-between;align-items:center;}
+.nav-group:hover{color:#999;}
+.nav-group .nav-caret{font-size:9px;opacity:.6;transition:transform .15s;}
+.nav-group.collapsed .nav-caret{transform:rotate(-90deg);}
+.nav-group-body.collapsed{display:none;}
+.vocab-search{width:100%;box-sizing:border-box;background:#15140f;border:1px solid #2e2e2a;color:#cfc9b8;padding:7px 9px;font-size:12.5px;margin-bottom:10px;font-family:inherit;}
+.vocab-card{border:1px solid #252522;padding:8px 10px;margin-bottom:6px;}
+.vocab-row{display:flex;align-items:baseline;gap:8px;cursor:pointer;}
+.vocab-word{color:#c8b97a;font-weight:600;font-size:13px;}
+.vocab-def-preview{color:#8a8576;font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.vocab-tag-pill{display:inline-block;font-size:9.5px;color:#666;border:1px solid #2e2e2a;padding:1px 5px;border-radius:8px;margin-right:3px;margin-top:3px;}
+.vocab-tag-pill.routing{color:#c87a7a;border-color:#5a3a3a;}
+.vocab-count-bar{font-size:11px;color:#555;margin-bottom:8px;}
+.preview-panel{grid-row:2;background:#0f0f0d;border-left:1px solid #2a2a27;overflow-y:auto;padding:18px 16px;}
+.pv-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid #222;}
+.pv-header h3{font-size:11px;color:#666;letter-spacing:.1em;text-transform:uppercase;}
+.pv-box{background:#161614;border:1px solid #252522;padding:14px;font-size:13px;line-height:1.8;color:#b8a880;font-style:italic;min-height:60px;margin-bottom:10px;}
+.pv-box .byline{font-style:normal;color:#555;font-size:11px;margin-top:10px;}
+.pv-box .preamble{font-style:normal;color:#777;font-size:11px;margin-bottom:10px;line-height:1.5;}
+.pv-box .closing{font-style:normal;color:#666;font-size:11px;margin-top:10px;padding-top:8px;border-top:1px solid #1e1e1c;line-height:1.5;}
+.pline{margin:5px 0;padding-left:8px;border-left:2px solid #333;}
+.pline.green{color:#7ab87a;border-left-color:#4a7a4a;}
+.pline.red{color:#c87a5a;border-left-color:#7a4a3a;}
+.tone-pill{display:inline-block;padding:1px 6px;font-size:10px;border:1px solid #2a2a2a;color:#555;margin:2px 1px;font-style:normal;}
+.tone-doom{border-color:#5a3030;color:#a06060;}
+.tone-hope{border-color:#305a3a;color:#608060;}
+.stat-row{display:flex;justify-content:space-between;font-size:11px;color:#444;padding:3px 0;}
+.stat-row span:last-child{color:#777;}
+.export-area{background:#0a0a09;border:1px solid #222;padding:10px;font-size:11px;font-family:'Courier New',monospace;color:#6a8a6a;line-height:1.6;max-height:180px;overflow-y:auto;white-space:pre-wrap;word-break:break-all;display:none;margin-top:6px;}
+.export-area.open{display:block;}
+.section-stats{margin:10px 0;padding-top:10px;border-top:1px solid #1e1e1c;}
+.flavour-sel{margin-bottom:10px;}
+.flavour-sel select{font-size:12px;padding:4px 8px;}
+.notif{position:fixed;bottom:20px;right:20px;background:#2a2518;border:1px solid #8a7a5a;color:#c8b97a;padding:8px 16px;font-size:12px;opacity:0;transition:opacity .3s;pointer-events:none;}
+.notif.show{opacity:1;}
+</style>
+</head>
+<body>
+<div class="app">
+<div class="topbar">
+  <span class="brand">ViceChair — Prose Editor</span>
+  <span class="save-badge" id="save-badge">unsaved</span>
+  <button class="btn btn-gold" onclick="saveAll()">Save</button>
+  <button class="btn" onclick="loadFromFile()">Import JSON</button>
+  <button class="btn" onclick="exportJSON()">Export JSON</button>
+  <button class="btn" onclick="resetToDefaults()">Reset defaults</button>
+</div>
+<div class="sidebar" id="sidebar"></div>
+<div class="editor" id="editor"></div>
+<div class="preview-panel" id="preview"></div>
+</div>
+<div class="tab-bar" id="tab-bar">
+  <button class="tab-btn active" id="tab-browse" onclick="showTab('browse')">
+    <span class="tab-icon">☰</span>Browse
+  </button>
+  <button class="tab-btn" id="tab-edit" onclick="showTab('edit')">
+    <span class="tab-icon">✎</span>Edit
+  </button>
+  <button class="tab-btn" id="tab-preview" onclick="showTab('preview')">
+    <span class="tab-icon">◉</span>Preview
+  </button>
+</div>
+<div class="notif" id="notif"></div>
+<input type="file" id="file-input" accept=".json" style="display:none" onchange="handleFileImport(event)">
+
+<script>
+const CONDITIONS=[
+  "religion_extinction","religion_spread","polity_collapse","war_cascade",
+  "land_exhaustion","schism_cascade","no_wars","faith_unity",
+  "ecological_recovery","dominant_in_polities","mass_exodus",
+  "demographic_collapse","allied_at_war","acts_of_god_fired",
+  "pressure_critical","nrm_emerged","trade_collapsed"
+];
+const TONE_TAGS=[
+  "doom_religious","doom_martial","doom_political","doom_ecological",
+  "doom_demographic","doom_economic","doom_acts_of_god",
+  "hope_religious","hope_martial","hope_ecological"
+];
+const CLUSTERS=["water","fire","body","sky","architecture","agricultural","journey","astronomical"];
+const NARRATOR_TYPES=["village_elder","pilgrim","merchant","monk","soldier","forester","innkeeper","scholar","refugee"];
+const OCCUPATIONS={
+  village_elder:["hearth-elder","council-speaker","memory-keeper","village reeve","hall witness"],
+  pilgrim:["road pilgrim","wayfarer","votary","keeper of vows","pilgrim of the Third Road"],
+  merchant:["salt-factor","river trader","chapman","caravan drover","tally-keeper","relic broker"],
+  monk:["shrine-keeper","scriptor","anchorite","copyist","keeper of relics","itinerant copyist"],
+  soldier:["march warden","garrison hand","spear-bearer","border rider","shield-retainer","toll-reeve"],
+  forester:["woodward","moss gatherer","charcoal burner","trapper","forest witness","bog-herdsman"],
+  innkeeper:["hosteler","ale-wife","roadside keeper","keeper of the common room","ferryman"],
+  scholar:["annotator","lector","genealogist","calendar-keeper","student of omens","hedge-astrologer","bone-reader"],
+  refugee:["displaced soul","wanderer","uprooted one","exile","road-bound survivor"]
+};
+const TERRAINS=["Forest","Hills","Mountain","Tilled","Pasture","Coast"];
+const TERRAIN_PLACES={
+  Forest:["the deep wood","the forest margin","the tree-dark country"],
+  Hills:["the hill country","the uplands","the high ground"],
+  Mountain:["the mountain passes","the high stone country","the peaks"],
+  Tilled:["the cultivated lands","the grain country","the ploughland"],
+  Pasture:["the open grazing","the common ground","the downs"],
+  Coast:["the tideland","the shore country","the littoral"]
+};
+const SEASONAL_OPENINGS=[
+  "The season has shed another skin.",
+  "The heavens complete another circuit.",
+  "The reckoning sticks advance once more.",
+  "Another quarter of the year is consumed.",
+  "The sun returns by its appointed road.",
+  "The old season has entered memory.",
+  "The wheel groans onward.",
+  "The stars have resumed their ancient argument.",
+  "Another measure of time is spent.",
+  "The seasons do not pause for deliberation."
+];
+const NAR_CLOSINGS=[
+  "Such is the condition of things.",
+  "The season will judge us soon enough.",
+  "I have written what I have seen.",
+  "The rest belongs to Providence.",
+  "May wiser heads interpret these signs.",
+  "The heavens have not yet clarified the matter.",
+  "Whether this is omen or coincidence remains disputed.",
+  "The road will provide its own answer.",
+  "Such talk occupies the long evenings.",
+  "I leave the conclusion to those better educated.",
+  "So it has been set down.",
+  "This is what I have seen with my own eyes.",
+  "The future remains, as always, uncooperative.",
+  "I pray these signs are favourable.",
+  "The augurs disagree, as they always do."
+];
+const RUMOUR_OPENERS=[
+  "A drover from the south reports that ",
+  "The ferryfolk insist that ",
+  "Those who crossed the river speak of ",
+  "A matter much discussed in the alehouses concerns ",
+  "Merchants arriving under uncertain skies claim ",
+  "It is murmured among the road people that ",
+  "Those who passed through lately spoke of ",
+  "The pilgrims who stopped here told of ",
+  "A tinker who came through three days ago swore that ",
+  "Word comes from those who travel the eastern road that ",
+  "A scholar passing through noted in his account that ",
+  "The itinerant preacher who addressed the market square claimed that ",
+  "Those who work the river report that ",
+  "Among the road people there is talk of ",
+  "A merchant of some standing who stopped at the inn maintained that "
+];
+const P_PREAMBLES_DOOM=[
+  "Set down by {occ}, whose hand trembled in the writing:",
+  "From the account of {occ}, who serves {rel} and who saw what follows in a vision:",
+  "Attributed to {occ}, whose authority in matters of {rel} is not disputed:",
+  "The {occ} who transcribed this asked that it be noted she did not wish to transcribe it:",
+  "Copied from the margin of the {rel} commentary, in a hand identified as that of {occ}:",
+  "Delivered by {occ} to the assembled faithful of {rel}, in these words:",
+  "Found written on the wall of the inner chamber, in the hand of {occ}:",
+  "As recorded by {occ} of {rel}, in the season before the reckoning:"
+];
+const P_PREAMBLES_HOPE=[
+  "Set down by {occ}, who believed what was shown and recorded it faithfully:",
+  "From the account of {occ}, who serves {rel} and who was shown what follows:",
+  "Attributed to {occ}, in whose hearing the following was made plain:",
+  "The {occ} who recorded this asked that it be noted he considered it good news:",
+  "Copied from the records of {rel} in the hand of {occ}, who called it a promise:",
+  "Delivered by {occ} to the faithful of {rel} as a matter of hope rather than certainty:",
+  "From the meditations of {occ}, servant of {rel}, on the shape of what might be:",
+  "As recorded by {occ} of {rel}, in a season of clear signs:"
+];
+const P_CLOSINGS_DOOM=[
+  "This is what is written. What is written is not always what occurs.",
+  "The record stands. What stands may yet be moved.",
+  "So it is set down. The setting down is not the same as the sealing.",
+  "The augurs who produced this account did not produce it with pleasure.",
+  "What has been seen has been recorded. What has been recorded may yet be prevented.",
+  "This vision was not sought. It arrived uninvited, clear, and unwelcome.",
+  "The bone-reader set this down and then sat for a long time without speaking. Eventually she said: it is not certain. But it is likely.",
+  "It is written. It is also true that some things that are written are not fulfilled. The difference is not always legible in advance."
+];
+const P_CLOSINGS_HOPE=[
+  "This is the promise that has been seen in the pattern. Promises require fulfilment.",
+  "The possibility has been recorded. Possibility and certainty are not the same.",
+  "What might be has been set down alongside what is. The distance between them is the work.",
+  "The record shows a way. Ways require walking.",
+  "The pattern admits this outcome. Admitting an outcome is not the same as guaranteeing it.",
+  "This is what the stars show as possible. The stars are not always read correctly. But they are not always misread either.",
+  "The promise that was seen is set down here. Promises are made to be kept or broken. The keeping is the faithful work.",
+  "It was shown that this was possible. The showing is not the achieving."
+];
+
+const MISSIVE_TYPES=["pressure_plea","land_plea","schism_warning","military_threat","refugee_plea","conversion_report"];
+const LOG_EVENT_TYPES=["uprising","war_declared","war_victory","war_stalemate","schism","nrm_emerged","religion_drift","land_stressed","land_depleted","land_exhausted","land_recovery","border_tension","acts_of_god"];
+const CREED_THEOLOGIES=["Communal","Hierarchical","Quietist","Militant","Evangelical","Restorative","Apocalyptic","Syncretic","Traditionalist","Reformist"];
+
+const DEFAULT_DATA={
+  prophecy_utterances:[
+    {id:"W-01",cluster:"water",base:"The old water shall remember its source, or forget it entirely.",conditions:["religion_spread","religion_extinction"],tone:["doom_religious","hope_religious"],reskins:{Martial:"The river of the faithful shall carve new channels, or run to nothing in the sand.",Restorative:"The sacred flow shall return to the living earth, or be swallowed by dry ground.",Monastic:"The well of doctrine shall be replenished from its source, or the vessel shall stand empty.",Evangelical:"The word travels as water travels — it finds every crack, or it does not flow at all."}},
+    {id:"W-02",cluster:"water",base:"What the tide brings in, the tide shall also carry away.",conditions:["mass_exodus","trade_collapsed"],tone:["doom_demographic","doom_economic"],reskins:{Martial:"What the army gathers, the army shall also scatter.",Restorative:"What the earth yields, the earth shall also reclaim.",Monastic:"What the order preserves, neglect shall also consume.",Evangelical:"What the mission planted, the season shall also uproot."}},
+    {id:"W-03",cluster:"water",base:"The river mourns nothing. This is its power and its indifference.",conditions:["demographic_collapse","allied_at_war"],tone:["doom_demographic","doom_martial"],reskins:{Martial:"The army mourns nothing. Its indifference is the source of its strength and its disgrace.",Restorative:"The forest mourns nothing it releases. What falls becomes what grows.",Monastic:"The order mourns no doctrine it sets aside. This is wisdom and it is also loss.",Evangelical:"The road mourns no traveller who turns back. The road does not know the difference."}},
+    {id:"F-01",cluster:"fire",base:"The hearth that goes cold is harder to relight than one that was never lit.",conditions:["religion_extinction","polity_collapse"],tone:["doom_religious","doom_political"],reskins:{Martial:"The army that disbands is harder to raise than one that never formed.",Restorative:"The grove that is cleared is harder to regrow than one never touched.",Monastic:"The practice that lapses is harder to resume than one never begun.",Evangelical:"The congregation that disperses is harder to call than one never gathered."}},
+    {id:"F-02",cluster:"fire",base:"Smoke rises from what the fire has finished with.",conditions:["polity_collapse","mass_exodus"],tone:["doom_political","doom_demographic"],reskins:{Martial:"Smoke rises from what the army has finished with.",Restorative:"New growth rises from what the fire has finished with. Not from what stands.",Monastic:"Wisdom rises from what the examination has finished with.",Evangelical:"The word travels furthest from what it has finished converting."}},
+    {id:"B-01",cluster:"body",base:"The body that does not feel its fever is the most dangerous patient.",conditions:["pressure_critical","acts_of_god_fired"],tone:["doom_political","doom_acts_of_god"],reskins:{Martial:"The army that does not know it is broken is the most dangerous to command.",Restorative:"The land that does not show its exhaustion is the closest to collapse.",Monastic:"The doctrine that does not know it is corrupt is the hardest to reform.",Evangelical:"The congregation that does not know it is drifting is the furthest from the road."}},
+    {id:"B-04",cluster:"body",base:"Old bone does not forget the breaking.",conditions:["polity_collapse","religion_extinction"],tone:["doom_political","doom_religious"],reskins:{Martial:"Old soldiers do not forget the field where they broke.",Restorative:"Old growth does not forget the fire that took it.",Monastic:"Old doctrine does not forget the council that revised it.",Evangelical:"Old roads do not forget the feet that abandoned them."}},
+    {id:"S-01",cluster:"sky",base:"The stars do not hurry, but they arrive.",conditions:["acts_of_god_fired","war_cascade"],tone:["doom_acts_of_god"],reskins:{Martial:"The army does not hurry, but it arrives.",Restorative:"The season does not hurry, but it turns.",Monastic:"The reckoning does not hurry, but it is written.",Evangelical:"The word does not hurry, but it is heard."}},
+    {id:"S-07",cluster:"sky",base:"The sky records. It does not interpret. That work is left to others.",conditions:["polity_collapse","mass_exodus"],tone:["doom_political","doom_demographic"],reskins:{Martial:"The chronicle records. It does not judge. That work is left to those who come after.",Restorative:"The earth absorbs. It does not interpret. That is the work of those who cultivate it.",Monastic:"The archive preserves. It does not adjudicate. The adjudication is the reader's burden.",Evangelical:"The road continues. It does not evaluate the traveller. That is someone else's commission."}},
+    {id:"AG-01",cluster:"agricultural",base:"The field that is never left fallow shall eventually refuse the seed.",conditions:["land_exhaustion","ecological_recovery"],tone:["doom_ecological"],reskins:{Martial:"The soldier that is never rested shall eventually refuse the order.",Restorative:"The grove that is never left alone shall eventually refuse the root.",Monastic:"The mind that is never left to rest shall eventually refuse the text.",Evangelical:"The road that is never left quiet shall eventually refuse the traveller."}},
+    {id:"AG-03",cluster:"agricultural",base:"The blight makes no enquiries before it arrives.",conditions:["acts_of_god_fired","land_exhaustion"],tone:["doom_acts_of_god"],reskins:{Martial:"The army makes no enquiries before it arrives.",Restorative:"The drought makes no enquiries before it arrives.",Monastic:"The fire makes no enquiries about which texts are worth saving.",Evangelical:"The silence makes no enquiries about which congregation deserves it."}},
+    {id:"J-01",cluster:"journey",base:"A road that goes nowhere remains a road for some time before it becomes something else.",conditions:["trade_collapsed","religion_extinction"],tone:["doom_economic","doom_religious"],reskins:{Martial:"A campaign that achieves nothing remains a campaign for some time before it becomes a retreat.",Restorative:"A grove that produces nothing remains a grove for some time before it becomes waste.",Monastic:"An order that teaches nothing remains an order for some time before it becomes a habit.",Evangelical:"A mission that converts no one remains a mission for some time before it becomes a journey."}},
+    {id:"AS-02",cluster:"astronomical",base:"Three stars move as one until they do not. The astronomers knew this was coming. They did not say when.",conditions:["allied_at_war","schism_cascade"],tone:["doom_martial","doom_religious"],reskins:{Martial:"Three armies move as one until they do not. The commanders knew this was possible. They did not plan for it.",Restorative:"Three groves draw from one watershed until they do not. The woodwards knew this was coming. They did not prevent it.",Monastic:"Three doctrines coexist until they do not. The scholars knew the tensions. They did not resolve them.",Evangelical:"Three congregations share one road until they do not. The missionaries knew the divergences. They did not address them."}},
+    {id:"AS-05",cluster:"astronomical",base:"There is an eclipse coming. Those who have read the signs agree on this. They do not agree on what it signifies.",conditions:["polity_collapse","acts_of_god_fired"],tone:["doom_political","doom_acts_of_god"],reskins:{Martial:"There is a reckoning coming. Those who have read the field agree on this. They do not agree on who will bear it.",Restorative:"There is a blight coming. Those who have read the soil agree on this. They do not agree on how bad.",Monastic:"There is a schism coming. Those who have read the creed agree on this. They do not agree on which article will break.",Evangelical:"There is a silence coming. Those who have read the congregation agree on this. They do not agree on its duration."}}
+  ],
+  food_plenty:[
+    "The smokehouses stand full.",
+    "The granaries groan beneath their own weight.",
+    "No one leaves a bowl unfilled.",
+    "Children throw crusts to dogs.",
+    "The harvest exceeded what was asked of it.",
+    "Even the poorest tables are not bare.",
+    "The stores are deeper than this season requires.",
+    "What the earth gave this year it gave generously, as if making amends.",
+    "The threshing floors are heaped and the birds grow fat on what spills.",
+    "There is a smell of plenty in the air that has not been there for some seasons."
+  ],
+  food_thin:[
+    "The porridge grows thinner.",
+    "The grain merchants are watched closely.",
+    "Even the prosperous complain quietly.",
+    "The children ask difficult questions at supper.",
+    "The stew grows thinner by the week.",
+    "People speak of food more than they eat it.",
+    "The meal that once fed four now feeds three, and three is managed.",
+    "Those who remember the lean years say this season has the look of one.",
+    "The miller's wheel turns less often than it did."
+  ],
+  food_scarce:[
+    "Even the dogs seem lean.",
+    "The old know hunger's face and recognise it.",
+    "Roots once ignored now command attention.",
+    "The market sells things that should never be eaten.",
+    "The silence at supper grows longer.",
+    "The dead receive simpler funerals.",
+    "Soup is made of what soup has not previously been made of.",
+    "The children are quieter than children should be.",
+    "The hungry have a particular way of watching those who are not.",
+    "The word shortage is used openly now, which means the fact has preceded the word by some weeks.",
+    "Those who have eat without ceremony. Those who do not have watch without accusation. Both parties understand the arrangement.",
+    "The physic says the complaints he sees are not illness. They are the body's answer to arithmetic."
+  ],
+  land_good:[
+    "The earth still answers the plough.",
+    "The soil gives freely.",
+    "This ground has been well-tended.",
+    "The earth is generous here.",
+    "The fields have their old vigour.",
+    "The furrows open cleanly and close behind the seed.",
+    "What is planted here takes, which is not everywhere true.",
+    "The land remembers how to be land.",
+    "The roots go deep here. You can see it in what grows above.",
+    "The worms are abundant, which is the sign the farmers watch for.",
+    "This is land that has been treated fairly. It shows."
+  ],
+  land_depleted:[
+    "The land is visibly depleted.",
+    "The furrows yield less each season.",
+    "The soil comes up pale upon the shovel.",
+    "The ground remembers every demand placed upon it.",
+    "The land has begun keeping accounts.",
+    "The fields give the appearance of fields without giving what fields are for.",
+    "The farmers plant in hope rather than expectation, which is a significant shift.",
+    "The land has been asked for the same thing too many times.",
+    "The earth is not refusing yet. But it is making its reservations known."
+  ],
+  land_exhausted:[
+    "The land has been worked past its patience.",
+    "What was field is becoming waste.",
+    "The ground refuses what is asked of it.",
+    "The furrows look like old wounds.",
+    "The earth has given what the earth had and there is nothing more in it.",
+    "The farmers plant from habit. The land receives from indifference.",
+    "There are places here where the soil is dust. Not dry — dust. The difference is permanent.",
+    "What they are calling a field is not a field. It is a memory of a field.",
+    "I have heard the expression worked to death applied to people. I understand now that it applies also to soil."
+  ],
+  war_present:[
+    "The road carries more soldiers than merchants.",
+    "Young men speak too eagerly of glory.",
+    "The frontier has become uneasy.",
+    "The armourers have worked by candlelight.",
+    "The sound of distant conflict reaches us on certain winds.",
+    "War has come to these parts, as it comes — without being invited and without acknowledging that it was not invited.",
+    "The soldiers that pass through do not linger, which is itself a kind of information.",
+    "Those who have seen war before watch the preparations with a different expression than those who have not.",
+    "The smiths work on things that are not tools.",
+    "There is a quality to the quiet between distant sounds that those who have heard it before recognise immediately."
+  ],
+  food_adequate:[
+    "The harvest was adequate.",
+    "We do not go hungry.",
+    "The tables are not empty.",
+    "There is enough, if not abundance.",
+    "The season fed us, which is sufficient.",
+    "The stores will last, by most reckonings.",
+    "The bread is plain but there is bread.",
+    "No one speaks of shortage yet, which is itself a kind of news.",
+    "The portion is modest but the portion is there.",
+    "Adequate is the word most commonly used, and adequate is not nothing."
+  ],
+  land_worn:[
+    "The fields have lost some of their old strength.",
+    "The soil is tiring.",
+    "The pasture shows more stone than grass.",
+    "One notices the land is working harder for less.",
+    "The furrows look weary.",
+    "The topsoil is thinner than it was. You can see it in the colour.",
+    "The yields are adequate but the trend is not encouraging.",
+    "What the land gives it gives reluctantly, as if it remembers being asked before.",
+    "The drainage is not what it was. The low ground stands wet too long.",
+    "The soil comes up pale upon the shovel, which is not what pale soil means.",
+    "Those who know the land say it is tired but not broken. The distinction matters."
+  ],
+  war_absent:[
+    "The roads are peaceful enough, for now.",
+    "No soldiers have passed through lately.",
+    "The border is quiet.",
+    "We have been spared the worst of it, so far.",
+    "The merchants move freely, which means the roads are safe.",
+    "There is no war here at present. This sentence contains more uncertainty than it appears to.",
+    "The quiet is the quiet of absence rather than the quiet of resolution.",
+    "Trade proceeds, which is the best available evidence of peace.",
+    "The market gossip concerns prices and harvests and the behaviour of neighbours. This is the gossip of peace.",
+    "For the moment, the ordinary sounds of the settlement are sufficient. No other sounds intrude."
+  ],
+  migration_moderate:[
+    "Several families have arrived from elsewhere.",
+    "Strangers have taken the empty houses.",
+    "New people settle among us, quietly.",
+    "There are faces here I do not recognise from last season.",
+    "A coffle of wanderers arrived and did not leave.",
+    "The population has not grown so much as changed.",
+    "New voices in the common room ask questions about roads, which is the sign of recent arrival.",
+    "The house at the end of the lane has new occupants. No one is certain where the old occupants went.",
+    "The newcomers are polite and quiet and keep to themselves, which is what newcomers do until they no longer feel like newcomers.",
+    "Three families arrived in the last month from the direction of the hills. They do not speak of what they left."
+  ],
+  migration_stable:[
+    "The population here is much as it was.",
+    "Few have come or gone of late.",
+    "The same families remain.",
+    "The community is stable, which is itself a kind of news.",
+    "The faces in the market are the faces that were in the market last season.",
+    "Nothing has arrived and nothing has departed, which in these times is remarkable.",
+    "The settlement has the quality of a place that has decided to remain itself.",
+    "The same arguments are being had as were being had last season, which means at least the arguers are still here.",
+    "The roads through here carry travellers, not migrants. The distinction is evident to anyone who looks."
+  ],
+  trade_good:[
+    "The market is lively enough.",
+    "Trade moves through here.",
+    "Goods change hands readily.",
+    "The factors come and go with the briskness of those whose time has value.",
+    "The scales in the market have not been idle.",
+    "Commerce here is not spectacular but it is steady, which is worth more than spectacular.",
+    "The merchants who stop here return, which is the highest available endorsement.",
+    "The tally-keepers are busy. This is good.",
+    "Three caravans passed through in the last season. Two of them stopped.",
+    "The roads are worn in the way that roads wear when trade uses them."
+  ],
+  trade_poor:[
+    "Trade has been slow.",
+    "Few merchants stop here now.",
+    "The market is quieter than it was.",
+    "Commerce has not been kind to this season.",
+    "The tally-keepers have little to tally.",
+    "The roads that carry trade carry less of it than formerly.",
+    "The market square fills on the appointed days but does not fill in the way it used to fill.",
+    "The merchants who came through did not stop. This is a sign that is read correctly by everyone.",
+    "The stalls that are occupied are fewer than the stalls that are not.",
+    "Those who trade for a living have a way of finding where trade is. They are finding it elsewhere."
+  ],
+  religion_local:[
+    "The shrines remain well attended.",
+    "The congregation meets and its meeting is well attended.",
+    "The feast days are observed here with a sincerity that is not merely habitual.",
+    "The doctrine is not questioned here, at least not publicly.",
+    "Children here are taught the catechism before they are taught much else.",
+    "The bells are heard each seventh day.",
+    "The prayers are spoken without hesitation.",
+    "The votaries walk these roads openly. No one objects.",
+    "The rites proceed without interruption, which is not everywhere the case."
+  ],
+  religion_foreign:[
+    "The rites of a different faith are observed here.",
+    "A foreign shrine draws visitors from afar.",
+    "Travellers bring teachings that are not our own.",
+    "Strange symbols appear more frequently than before.",
+    "The local practice follows a different confession.",
+    "One hears unfamiliar prayers in the evenings.",
+    "Those of the foreign faith are spoken of without particular hostility, which is a kind of tolerance.",
+    "The iconography of another tradition marks several doors and gateways.",
+    "Priests of a different order pass through this settlement with some regularity."
+  ],
+  migration_heavy:[
+    "The roads carry more wanderers than merchants.",
+    "Strange faces appear daily in the market.",
+    "A great many people are passing through who have not said where they came from.",
+    "The town has grown with people who do not know its customs.",
+    "The inns are full of people who are not travellers in the ordinary sense.",
+    "People arrive with what they can carry. What they can carry is not much.",
+    "The roads have a direction to them that roads do not always have.",
+    "Those who are leaving do not say they are leaving. They say they are going to see someone."
+  ],
+  missives:{
+    pressure_plea:[
+      "The burden here grows heavier than the season's work can bear. I write in hope that you may know of it.",
+      "I do not write to complain, only to report: the pressure in this region has exceeded what our people can quietly absorb.",
+      "There is a thinning patience here, the kind that precedes a decision we would all rather not make.",
+      "We have managed thus far. Whether we shall continue to manage is the question I put to you, respectfully.",
+      "The situation here is not yet a crisis. I write now so that it does not become one without your knowledge."
+    ],
+    land_plea:[
+      "The soil that has fed this settlement for generations gives less with each passing season. I do not know how to ask you to reverse this, only that you know of it.",
+      "The fields are failing in a way that does not appear to be temporary. I have spoken to those who remember three generations of harvests and they say they have not seen it like this.",
+      "The land here is tired. I write in case there is something the faith can offer that the soil cannot produce on its own.",
+      "We are not yet hungry. But the trajectory of the harvest these past seasons suggests we may become so. I write while there is still time to think.",
+      "The productivity of this region's land is declining. I set this down formally so that the record holds it, and so that you may act on it if you are able."
+    ],
+    schism_warning:[
+      "A disagreement within the congregation has hardened into something that resembles a position. I write before it becomes a faction.",
+      "There are those here who read the third article differently than I do. I have tried to resolve the matter locally. I have not succeeded.",
+      "The unity of the faithful in this region is less certain than it was. I do not know who is right. I know that both sides believe they are.",
+      "The doctrinal dispute I mentioned in a previous correspondence has not resolved. It has, if anything, acquired adherents.",
+      "I write to warn you that what is happening in this congregation is not merely argument. It is the kind of argument that produces departures."
+    ],
+    military_threat:[
+      "Armed forces are present in this region in a number and disposition that I find difficult to interpret as peaceful.",
+      "The polity that borders us has changed its posture. I do not say war is coming. I say the conditions for it are being arranged.",
+      "There are soldiers on the road who are not travelling in the way that soldiers travel when they are going home.",
+      "I write to inform you of a military situation that may require the faith to take a position, or at least to be aware that one may be forced upon it.",
+      "The border is not as quiet as it was. I say this having watched it for some seasons and knowing what quiet looks like here."
+    ],
+    refugee_plea:[
+      "Displaced persons have arrived here in number sufficient to be noticed. They require more than I have to give them and less than they deserve.",
+      "There are people here who have come from elsewhere and whose situation is not comfortable. I write in case the faith has something to offer.",
+      "The road has brought us people who did not choose to travel it. They are here now. I ask what the faith would have us do.",
+      "Several families have arrived from the direction of the troubles. They have not said what the troubles were. Their faces say enough.",
+      "The displaced who have settled near us are not troublesome. They are not flourishing either. I write in case there is more to be done."
+    ],
+    conversion_report:[
+      "I write to report that the faith is gaining ground here, though not in a manner I would have predicted or designed.",
+      "Several households have adopted the practice of our faith this season. I record this as good news, with the note that good news sometimes requires as much attention as bad.",
+      "The faith is spreading here in the way that things spread when no one is directing them — unevenly, but persistently.",
+      "There are more of the faithful in this region than there were last season. I write so that you know, and so that what grows here is tended.",
+      "The local population has shown an interest in our practices that I would call sincere, if modest. I do not want to overstate it. I do not want to leave it unrecorded."
+    ]
+  },
+  log_events:{
+    uprising:[
+      "The base class has risen against their rulers.",
+      "The common people have declared themselves ungoverned.",
+      "A refusal of the old arrangements has taken hold in the lower quarters.",
+      "The ruled have decided, for the moment, not to be.",
+      "The tally of grievances has come due."
+    ],
+    war_declared:[
+      "{aggressor} has declared war on {defender}.",
+      "{aggressor} moves against {defender}. The frontier will not be quiet.",
+      "War has been announced between {aggressor} and {defender}. Those who live between them take note.",
+      "{aggressor} has extended a military argument toward {defender}.",
+      "The dispute between {aggressor} and {defender} has become a campaign."
+    ],
+    war_victory:[
+      "{winner} defeats {loser} after {seasons} seasons of war.",
+      "The campaign against {loser} concludes in {winner}'s favour after {seasons} seasons.",
+      "{loser} yields to {winner} after {seasons} seasons of sustained conflict.",
+      "After {seasons} seasons, {winner} holds the field. {loser} does not.",
+      "The war that began {seasons} seasons ago ends with {winner} ascendant and {loser} diminished."
+    ],
+    schism:[
+      "A division within the faith has formalised itself.",
+      "What was disagreement has become two congregations where there was one.",
+      "The schism that was threatened has occurred. It remains to be seen what it produces.",
+      "A faction has departed the main body of the faith and constituted itself separately.",
+      "The old unity of the congregation has not survived the season."
+    ],
+    nrm_emerged:[
+      "{nrm_name} emerges from the meeting of {parent_a} and {parent_b} traditions.",
+      "A new movement — {nrm_name} — has declared itself, drawing from {parent_a} and {parent_b}.",
+      "The encounter between {parent_a} and {parent_b} has produced {nrm_name}, which is neither and something of both.",
+      "{nrm_name} has been constituted in this region, combining elements of {parent_a} and {parent_b} in a manner its founders consider original.",
+      "From the friction between {parent_a} and {parent_b} a third thing has emerged: {nrm_name}."
+    ],
+    land_stressed:[
+      "The {terrain} terrain is becoming stressed.",
+      "The {terrain} is showing signs of strain that the season has not resolved.",
+      "The land here — {terrain} country — is working harder than it ought to.",
+      "A deterioration of the {terrain} terrain has been noted by those who work it.",
+      "The {terrain} gives less than it gave, and asks more than it used to ask."
+    ],
+    acts_of_god:[
+      "A visitation has come to these lands of a kind that does not negotiate.",
+      "The catastrophe that arrived here was not invited and has not been asked to leave.",
+      "What has come to this region comes without precedent in living memory.",
+      "The event that has occurred here will be remembered by those who survive it as a dividing line.",
+      "Something has happened to this land that the ordinary language of season and harvest does not adequately describe."
+    ]
+  },
+  creed_articles:{
+    communal:[
+      "The faithful gather as equals. Truth is discerned together, not handed down.",
+      "What one member of the congregation suffers, all suffer. What one achieves, all share.",
+      "The assembly of the faithful is the highest authority in matters of doctrine and practice.",
+      "No seat is elevated above the others. The circle has no head."
+    ],
+    hierarchical:[
+      "The ordained stand between the faithful and the divine, and this standing is not incidental.",
+      "Authority descends from the anointed. The congregation receives, reflects, and obeys.",
+      "The order of the faith mirrors the order of creation. To dispute the hierarchy is to dispute what it reflects.",
+      "The high priest carries what the congregation cannot carry alone. This is the weight of office, not of vanity."
+    ],
+    evangelical:[
+      "The word was not given to be kept. It was given to be carried.",
+      "Every soul beyond the reach of the faith is an argument for greater reach.",
+      "The faithful who do not seek to make the faith more faithful are failing in their first obligation.",
+      "The road is long. The faithful should be on it."
+    ],
+    militant:[
+      "The faith has enemies and the faithful should know how to answer them.",
+      "Peace is the condition we seek. It is not always the condition we are given.",
+      "The sacred must sometimes be defended by those who are willing to defend it.",
+      "There is no contradiction between the sword and the shrine. Ask those who have lost the shrine whether they wish they had kept the sword."
+    ],
+    restorative:[
+      "The land is sacred. What is done to the land is done to the faith.",
+      "The faith does not merely inhabit the earth. It is responsible for it.",
+      "Restoration of the damaged land is an act of devotion equal to prayer.",
+      "The grove that is tended is a temple. The grove that is cleared is a desecration."
+    ],
+    quietist:[
+      "The faithful do not seek power. Power is the world's concern, not the faith's.",
+      "Silence is a form of speech. Withdrawal is a form of presence.",
+      "The faith endures by not contesting what it cannot change and tending what it can.",
+      "The world makes noise. The faithful make space within it."
+    ],
+    apocalyptic:[
+      "The age that is ending has been ending for some time. The faithful should be ready.",
+      "What is coming has been foretold. The question is not whether but when.",
+      "The faithful who do not prepare for the end are not paying attention to what the signs are saying.",
+      "Comfort in the present age is not the faith's promise. The promise concerns what comes after the present age."
+    ],
+    traditionalist:[
+      "The old forms were given for a reason. The faithful should not be quick to abandon what they have not yet fully understood.",
+      "Change is easy. Continuity is the discipline.",
+      "The ancestors knew things we have forgotten. The traditions they left us are not obstacles — they are archives.",
+      "The faith that revises itself constantly reveals that it does not know what it believes."
+    ]
+  }
+};
+
+
+const RACE_VOCAB_DEFAULT = {
+  Human: {
+    self_nouns: ["people","folk","inhabitants","souls","the faithful","the settled","our kind","those of us here","the governed","the numbered"],
+    outsider_nouns: ["the stone-kin","the running folk","the deep-swimmers","the far people","those who arrived","the others","those not of our reckoning"],
+    land_metaphors: ["the road divides here","the field accounts for itself","the gate stands open or it does not","the ledger of the land","the household of the earth","what the market will bear","a question of tenure","the boundary as agreed"],
+    time_metaphors: ["in living memory","since the last reckoning","before the records were kept","within the span of three generations","since the old arrangement","as long as the tallies go back","before the current order"],
+    uncertainty_phrases: ["the road will show what it shows","the accounts are not yet settled","the record is incomplete","I have written what I have confirmed","the matter is still open","I will not put in writing what I cannot verify","the ledger does not yet balance"],
+    value_words: ["reliable","recorded","settled","agreed","ordered","governed","provisioned","accounted","established","contracted"]
+  },
+  Troll: {
+    self_nouns: ["the boned ones","stone-kin","the deep people","those who remember the weight","the rooted","the old standing","those who have not moved","the anchored","the long-counting"],
+    outsider_nouns: ["the light-walkers","the quick folk","the surface people","those who do not stay","the unrooted","the brief ones","those who move when they should stand"],
+    land_metaphors: ["the bedrock holds or it does not","old stone remembers its breaking","the weight of the hill","what the root finds at depth","where the ground gives","the seam runs true or it does not","stone does not apologise for what it is","the deep layer speaks last"],
+    time_metaphors: ["before this hill was this shape","in the time of the second breaking","when the rivers ran differently","before the language changed","longer than the oldest timber","in the age before the lightening","across more seasons than the tallies name","when the stone was still cooling"],
+    uncertainty_phrases: ["stone does not hurry and neither do answers","the deep layer has not yet spoken","what is below will come up in time","I have not waited long enough to know","the root has not finished its work","this requires more seasons than I have given it","the weight of it is not yet clear"],
+    value_words: ["durable","anchored","certain","deep","old","heavy","sound","unbroken","patient","tested"]
+  },
+  Cynocephalian: {
+    self_nouns: ["the pack","trail-kin","the running people","scent-readers","those who know the wind","the ranging ones","our kind on the road","those who track"],
+    outsider_nouns: ["the still ones","the settled folk","those who build walls","the stone-sitters","those who do not read the air","the slow-moving","those whose trails are straight","the bounded people"],
+    land_metaphors: ["the trail ahead smells of","the wind from that direction carries","the den ground is","the marking says","the trail has been used recently","the scent here is wrong","the territory boundary holds","the far edge of the range"],
+    time_metaphors: ["three packs ago","before the territory shifted","when the trail was new","since the last range-change","before the pack was this size","as long as the marking holds","when we ran differently"],
+    uncertainty_phrases: ["the wind changes and I wait","the scent is confused here","the trail does not say yet","I have not followed it far enough","the pack does not agree on this","the marking is old and may not hold","I will know when I am closer"],
+    value_words: ["swift","sure-footed","ranging","sharp","pack-minded","trail-tested","scent-true","open","free-running","responsive"]
+  },
+  Deodand: {
+    self_nouns: ["the shell-bearers","the deep-swimming","molt-kin","those of the threshold","the current-following","the depth people","those who surface","the echo-reading","those between tides"],
+    outsider_nouns: ["the dry ones","those above the water","the surface walkers","those who do not go deep","the un-molted","the loud ones","those who fear the threshold","the shallow-dwelling"],
+    land_metaphors: ["the surface reads","the depth below this","what the current carries","the threshold between","the shell of the old place","what has been shed here","the echo from below","the molt-ground","where the tide decides"],
+    time_metaphors: ["before the last molt","in the deep-time before this shell","when the current ran differently","since the threshold shifted","across the depth of many turnings","before this form","when the echo was younger","in the age of the old shell"],
+    uncertainty_phrases: ["the echo has not yet returned","the depth below this is not yet sounded","the molt is not complete","I have not gone deep enough to know","the current will tell in its own time","the threshold is not yet readable","the shell has not yet opened on this"],
+    value_words: ["deep","liminal","patient","permeable","shed","renewed","resonant","threshold-crossing","tidal","emergent"]
+  }
+};
+
+const TERRAIN_RESOURCES_DEFAULT = {
+  Forest: {
+    goods: ["timber","charcoal","pitch","resin","bark-cloth","game","mushrooms","medicinal bark","honey","beeswax","dye-plants","trapping","firewood","tanbark","wild fruit"],
+    scarcities: ["grain","open pasture","stone for building","metal ore","salt"],
+    vulnerabilities: ["fire","clear-cutting","drought","bark-beetle","flooding at the root"],
+    trade_terms: ["the timber rights","the charcoal levy","the pitch contract","forest-law","wood-toll","the resin season","bark-harvest","coppice-rights"],
+    observation_fragments: ["the woodcutters work deeper into the forest than they used to","the pitch-men have moved their operation twice this season","the charcoal smoke from the hills is heavier than expected","the game has moved further from the settlement","the honey-harvest was poor where the trees are thinnest"]
+  },
+  Hills: {
+    goods: ["wool","sheep","goat-cheese","quarried stone","iron ore","lead","copper","heather","tallow","dried meat","grazing-rights","slate","millstone","fulling-clay"],
+    scarcities: ["grain","timber for building","flatland for cultivation","river access","deep-water wells"],
+    vulnerabilities: ["drought","overgrazing","landslip","hard winters","foot-rot in the flocks"],
+    trade_terms: ["the grazing-right","the quarry lease","the shearing toll","stone-weight","the lead-seam contract","wool-bale count","the tallow measure","hill-toll"],
+    observation_fragments: ["the sheep have been moved to the higher ground earlier than usual","the quarry is working a new face","the lead-smelters are busy and the smoke goes east","the cheese-factors came through in number this season","the grazing on the lower slopes is thin"]
+  },
+  Mountain: {
+    goods: ["silver","tin","salt from deep seams","gemstone","ice","rare herbs","furs","obsidian","copper","alum","pigment","mountain-passes as toll-points"],
+    scarcities: ["grain","flatland","large timber","warmth","easy travel"],
+    vulnerabilities: ["avalanche","pass-closure in winter","mine-collapse","altitude sickness","isolation in bad weather"],
+    trade_terms: ["the pass-toll","the salt-seam lease","the mine-right","the porter-fee","silver-weight","the altitude levy","the winter-surcharge","mountain-patent"],
+    observation_fragments: ["the pass was closed for six days and the merchant queue is still long","the salt-factors from the deep seam arrived late and without explanation","the silver from the upper workings is of lower grade than last season","the mountain route carries more than it used to","the ice-cutters say the glacier has retreated since their fathers worked it"]
+  },
+  Tilled: {
+    goods: ["wheat","rye","barley","flax","hemp","root vegetables","draft animals","malt for brewing","straw","oats","pulse crops","mustard-seed","oil-seed"],
+    scarcities: ["stone","metal","salt","luxury goods","timber beyond fencing"],
+    vulnerabilities: ["blight","drought","flooding","soil exhaustion","labour shortage after conflict"],
+    trade_terms: ["the grain-levy","the mill-right","the furlong-rent","the malt-tithe","the threshing-toll","harvest-share","the plough-fee","field-bond"],
+    observation_fragments: ["the mill has been running without pause since the harvest came in","the grain-factors arrived early and the farmers are not pleased with the price offered","the rye stood high but the wheat was thin","the draft animals are being requisitioned","the flax harvest was good and the linen-workers have more work than they can take"]
+  },
+  Pasture: {
+    goods: ["cattle","dairy","leather","horn","bone-meal","draught oxen","felted wool","tallow candles","preserved meat","hides","gut-cord","rendered fat"],
+    scarcities: ["grain for breadmaking","timber","metal goods","salt for preservation","building stone"],
+    vulnerabilities: ["murrain","overgrazing","drought","flooding of the low pasture","cattle-raid"],
+    trade_terms: ["the cattle-toll","the hide-count","the tallow-levy","the drover's-right","horn-weight","the dairy-measure","head-count","the commons-fee"],
+    observation_fragments: ["the cattle are thin this year and the herdsmen will not say why","the tallow-chandlers have more work than last season","the drovers came through with fewer head than the toll-book expected","the dairy-women say the yield is down since the wet spring","the hide-curers have set up outside the settlement which means a large slaughter is expected"]
+  },
+  Coast: {
+    goods: ["salt","dried fish","shellfish","amber","purple-dye from molluscs","ship-timber","rope","tar","foreign goods","pearls","whale-products","seaweed","sea-glass","coral"],
+    scarcities: ["grain","inland timber","freshwater in dry seasons","stone for building above the waterline","draft animals"],
+    vulnerabilities: ["storm","tide-surge","saltwater intrusion into farmland","piracy","harbour silting"],
+    trade_terms: ["the tide-toll","the salt-measure","the harbour-fee","the fish-levy","the dry-goods tariff","the foreign-bale duty","the net-right","anchor-fee","the brine-levy","the landing-fee"],
+    observation_fragments: ["the salt-pans have been productive and the factors are paying well","a foreign vessel put in that no one had seen the flag of before","the fish have been scarce closer to shore and the boats go further","the amber-gatherers after the last storm found more than they expected","the tar-men are busy which means a vessel is being built or repaired somewhere near","the harbour is fuller than usual and the innkeepers are pleased about it","the tide brought in something unusual and no one agrees on what it was"]
+  }
+};
+
+// Merge into DEFAULT_DATA
+const VOCAB_POOL_DEFAULT = {
+  "noun": [
+    {
+      "word": "cupidity",
+      "def": "greed; inordinate desire for wealth",
+      "tags": [
+        "formal",
+        "moral"
+      ]
+    },
+    {
+      "word": "aegis",
+      "def": "a shield; protection or sponsorship of someone in authority",
+      "tags": [
+        "formal",
+        "military"
+      ]
+    },
+    {
+      "word": "prebend",
+      "def": "a stipend granted by a cathedral to a canon or clergyman",
+      "tags": [
+        "religious",
+        "economics"
+      ]
+    },
+    {
+      "word": "docent",
+      "def": "a teacher, especially one attached to a museum or university",
+      "tags": [
+        "formal",
+        "people_base"
+      ]
+    },
+    {
+      "word": "publican",
+      "def": "a collector of taxes or public revenues",
+      "tags": [
+        "formal",
+        "economics",
+        "people_base"
+      ]
+    },
+    {
+      "word": "thurible",
+      "def": "a censer in which incense is burned during religious rites",
+      "tags": [
+        "religious"
+      ]
+    },
+    {
+      "word": "atavism",
+      "def": "the reappearance of an ancestral trait after generations of absence",
+      "tags": [
+        "biology",
+        "rare"
+      ]
+    },
+    {
+      "word": "puissance",
+      "def": "power, might, or force",
+      "tags": [
+        "archaic",
+        "formal"
+      ]
+    },
+    {
+      "word": "caravansary",
+      "def": "an inn enclosing a courtyard, used by travelling caravans",
+      "tags": [
+        "architecture",
+        "rare"
+      ]
+    },
+    {
+      "word": "truculence",
+      "def": "fierce, aggressive readiness to fight",
+      "tags": [
+        "formal"
+      ]
+    },
+    {
+      "word": "hesychasm",
+      "def": "a tradition of contemplative, silent inner prayer",
+      "tags": [
+        "religious",
+        "rare"
+      ]
+    },
+    {
+      "word": "bambakion",
+      "def": "a quilted undergarment worn beneath armour",
+      "tags": [
+        "military",
+        "rare"
+      ]
+    },
+    {
+      "word": "buskins",
+      "def": "tall laced boots reaching partway up the calf",
+      "tags": [
+        "archaic"
+      ]
+    },
+    {
+      "word": "cantle",
+      "def": "the raised rear portion of a saddle",
+      "tags": [
+        "rare"
+      ]
+    },
+    {
+      "word": "melisma",
+      "def": "a group of notes sung to a single syllable of text",
+      "tags": [
+        "music"
+      ]
+    },
+    {
+      "word": "porphyrogene",
+      "def": "born to a reigning monarch, in the purple chamber of the palace",
+      "tags": [
+        "archaic",
+        "courtly",
+        "rare"
+      ]
+    },
+    {
+      "word": "caprioles",
+      "def": "a leap performed by a trained horse without forward motion",
+      "tags": [
+        "rare"
+      ]
+    },
+    {
+      "word": "osculation",
+      "def": "the act of kissing",
+      "tags": [
+        "formal",
+        "rare"
+      ]
+    },
+    {
+      "word": "tulpa",
+      "def": "a being said to be brought into existence through sustained will or meditation",
+      "tags": [
+        "religious",
+        "rare"
+      ]
+    },
+    {
+      "word": "detumescence",
+      "def": "the subsiding of a swelling",
+      "tags": [
+        "anatomical",
+        "technical"
+      ]
+    },
+    {
+      "word": "plumbago",
+      "def": "graphite; also a flowering shrub",
+      "tags": [
+        "technical"
+      ]
+    },
+    {
+      "word": "loggia",
+      "def": "a gallery or arcade open on one or more sides",
+      "tags": [
+        "architecture"
+      ]
+    },
+    {
+      "word": "paradiddle",
+      "def": "a basic alternating drum-stroke pattern",
+      "tags": [
+        "music",
+        "rare"
+      ]
+    },
+    {
+      "word": "ratamacue",
+      "def": "a drum rudiment combining a drag with single strokes",
+      "tags": [
+        "music",
+        "rare"
+      ]
+    },
+    {
+      "word": "pince-nez",
+      "def": "eyeglasses with no sidepieces, held in place by pinching the nose",
+      "tags": [
+        "archaic"
+      ]
+    },
+    {
+      "word": "kibitzer",
+      "def": "one who offers unsolicited advice or commentary",
+      "tags": [
+        "rare",
+        "people_base"
+      ]
+    },
+    {
+      "word": "swain",
+      "def": "a young male admirer or suitor; a rustic gallant",
+      "tags": [
+        "archaic",
+        "courtly",
+        "people_base"
+      ]
+    },
+    {
+      "word": "pleroma",
+      "def": "a fullness or totality, especially of divine powers",
+      "tags": [
+        "religious",
+        "rare"
+      ]
+    },
+    {
+      "word": "panegyrist",
+      "def": "one who composes or delivers formal public praise",
+      "tags": [
+        "formal",
+        "courtly",
+        "people_noble"
+      ]
+    },
+    {
+      "word": "pantoufles",
+      "def": "slippers",
+      "tags": [
+        "archaic"
+      ]
+    },
+    {
+      "word": "opuscule",
+      "def": "a minor literary or musical composition",
+      "tags": [
+        "formal",
+        "rare"
+      ]
+    },
+    {
+      "word": "encomium",
+      "def": "a formal expression of high praise",
+      "tags": [
+        "formal",
+        "courtly"
+      ]
+    },
+    {
+      "word": "peroration",
+      "def": "the rhetorically elaborate concluding part of a speech",
+      "tags": [
+        "formal"
+      ]
+    },
+    {
+      "word": "rebab",
+      "def": "a bowed stringed instrument of the Middle East and North Africa",
+      "tags": [
+        "music",
+        "rare"
+      ]
+    },
+    {
+      "word": "fleam",
+      "def": "an instrument formerly used for bloodletting",
+      "tags": [
+        "medical",
+        "archaic"
+      ]
+    },
+    {
+      "word": "dhow",
+      "def": "a vessel with a triangular sail, used along the Arabian coast",
+      "tags": [
+        "nautical"
+      ]
+    },
+    {
+      "word": "murex",
+      "def": "a sea snail from which a prized purple dye is extracted",
+      "tags": [
+        "rare"
+      ]
+    },
+    {
+      "word": "palliasse",
+      "def": "a mattress consisting of a straw-filled sack",
+      "tags": [
+        "archaic"
+      ]
+    },
+    {
+      "word": "elytra",
+      "def": "the hardened forewings of a beetle, sheathing the flight wings",
+      "tags": [
+        "biology"
+      ]
+    },
+    {
+      "word": "pronotum",
+      "def": "the plate-like covering on the front segment of an insect's body",
+      "tags": [
+        "biology",
+        "technical"
+      ]
+    },
+    {
+      "word": "kapote",
+      "def": "a long, dark coat worn in some Jewish religious traditions",
+      "tags": [
+        "rare"
+      ]
+    },
+    {
+      "word": "auto-da-fé",
+      "def": "a ritual of public penance, historically including execution by fire",
+      "tags": [
+        "archaic",
+        "religious"
+      ]
+    },
+    {
+      "word": "opprobrium",
+      "def": "harsh public censure or disgrace",
+      "tags": [
+        "formal"
+      ]
+    },
+    {
+      "word": "divagation",
+      "def": "a digression; a wandering from the principal subject",
+      "tags": [
+        "formal",
+        "rare"
+      ]
+    },
+    {
+      "word": "myrmidon",
+      "def": "a loyal follower who carries out orders unquestioningly",
+      "tags": [
+        "formal",
+        "rare",
+        "people_martial"
+      ]
+    },
+    {
+      "word": "castellan",
+      "def": "the governor or warden of a castle",
+      "tags": [
+        "military",
+        "archaic",
+        "people_noble"
+      ]
+    },
+    {
+      "word": "odalisque",
+      "def": "historically, a chambermaid or concubine attached to a household",
+      "tags": [
+        "archaic",
+        "rare"
+      ]
+    },
+    {
+      "word": "frisson",
+      "def": "a sudden thrill of fear or excitement",
+      "tags": [
+        "formal"
+      ]
+    },
+    {
+      "word": "pareidolia",
+      "def": "the perception of meaningful patterns, such as faces, in random data",
+      "tags": [
+        "technical",
+        "rare"
+      ]
+    },
+    {
+      "word": "mimetolith",
+      "def": "a rock formation that resembles a recognisable shape or figure",
+      "tags": [
+        "rare",
+        "technical"
+      ]
+    },
+    {
+      "word": "dudeen",
+      "def": "a short clay tobacco pipe",
+      "tags": [
+        "archaic",
+        "rare"
+      ]
+    },
+    {
+      "word": "vestiture",
+      "def": "clothing or vestments; the act of being formally clothed",
+      "tags": [
+        "formal",
+        "religious"
+      ]
+    },
+    {
+      "word": "mien",
+      "def": "a person's manner, bearing, or air",
+      "tags": [
+        "formal"
+      ]
+    },
+    {
+      "word": "gonfalon",
+      "def": "a banner or standard hung from a horizontal crossbar",
+      "tags": [
+        "military",
+        "archaic"
+      ]
+    },
+    {
+      "word": "howdah",
+      "def": "a seat, often canopied, fixed to the back of an elephant",
+      "tags": [
+        "archaic",
+        "rare"
+      ]
+    },
+    {
+      "word": "alfil",
+      "def": "the bishop-equivalent piece in old chess variants; also a name for an elephant",
+      "tags": [
+        "rare"
+      ]
+    },
+    {
+      "word": "frass",
+      "def": "the excrement or debris left by feeding insects",
+      "tags": [
+        "biology",
+        "technical"
+      ]
+    },
+    {
+      "word": "scutellum",
+      "def": "a small shield-shaped plate, as on the back of an insect",
+      "tags": [
+        "biology",
+        "technical"
+      ]
+    },
+    {
+      "word": "palanquin",
+      "def": "a covered litter for one passenger, carried on the shoulders of bearers",
+      "tags": [
+        "archaic"
+      ]
+    },
+    {
+      "word": "throstle",
+      "def": "an old name for the song thrush",
+      "tags": [
+        "archaic",
+        "rare"
+      ]
+    },
+    {
+      "word": "amnion",
+      "def": "the membrane enclosing an embryo",
+      "tags": [
+        "anatomical",
+        "technical"
+      ]
+    },
+    {
+      "word": "colloquy",
+      "def": "a formal conversation or conference",
+      "tags": [
+        "formal"
+      ]
+    },
+    {
+      "word": "calumet",
+      "def": "a ceremonial pipe smoked to mark a solemn occasion",
+      "tags": [
+        "rare"
+      ]
+    },
+    {
+      "word": "badinage",
+      "def": "playful, teasing conversation",
+      "tags": [
+        "formal",
+        "courtly"
+      ]
+    },
+    {
+      "word": "paean",
+      "def": "a song or expression of praise, joy, or triumph",
+      "tags": [
+        "formal"
+      ]
+    },
+    {
+      "word": "coronach",
+      "def": "a funeral lament sung or wailed for the dead",
+      "tags": [
+        "archaic",
+        "rare"
+      ]
+    },
+    {
+      "word": "prevarication",
+      "def": "the act of speaking evasively to avoid the truth",
+      "tags": [
+        "formal",
+        "legal"
+      ]
+    },
+    {
+      "word": "bartizan",
+      "def": "a small turret projecting from the top of a wall or tower",
+      "tags": [
+        "architecture",
+        "military"
+      ]
+    },
+    {
+      "word": "embrasure",
+      "def": "an opening in a wall, splayed for a window or gun",
+      "tags": [
+        "architecture",
+        "military"
+      ]
+    },
+    {
+      "word": "stochasticity",
+      "def": "the quality of being randomly determined",
+      "tags": [
+        "technical"
+      ]
+    },
+    {
+      "word": "kismet",
+      "def": "fate; destiny",
+      "tags": [
+        "archaic"
+      ]
+    },
+    {
+      "word": "drey",
+      "def": "a squirrel's nest",
+      "tags": [
+        "rare"
+      ]
+    },
+    {
+      "word": "dirham",
+      "def": "a unit of currency used in several historical and modern states",
+      "tags": [
+        "economics"
+      ]
+    },
+    {
+      "word": "epicaricacy",
+      "def": "pleasure derived from another's misfortune",
+      "tags": [
+        "rare",
+        "formal"
+      ]
+    },
+    {
+      "word": "pleonasm",
+      "def": "the use of more words than necessary to express an idea",
+      "tags": [
+        "technical",
+        "rare"
+      ]
+    },
+    {
+      "word": "propinquity",
+      "def": "nearness in place, time, or relation",
+      "tags": [
+        "formal"
+      ]
+    },
+    {
+      "word": "attar",
+      "def": "a fragrant essential oil, especially distilled from rose petals",
+      "tags": [
+        "rare"
+      ]
+    },
+    {
+      "word": "cathexis",
+      "def": "the investment of emotional significance in an object or idea",
+      "tags": [
+        "technical",
+        "rare"
+      ]
+    },
+    {
+      "word": "thigmotaxis",
+      "def": "movement or orientation of an organism in response to touch",
+      "tags": [
+        "biology",
+        "technical"
+      ]
+    },
+    {
+      "word": "foramen",
+      "def": "a small natural opening, especially through a bone",
+      "tags": [
+        "anatomical",
+        "technical"
+      ]
+    },
+    {
+      "word": "kludge",
+      "def": "an improvised, makeshift solution assembled from what is at hand",
+      "tags": [
+        "technical",
+        "rare"
+      ]
+    },
+    {
+      "word": "syzygy",
+      "def": "a near-alignment of three or more celestial bodies",
+      "tags": [
+        "technical",
+        "rare"
+      ]
+    },
+    {
+      "word": "mouflon",
+      "def": "a wild sheep of mountainous regions, ancestor of domestic breeds",
+      "tags": [
+        "rare"
+      ]
+    },
+    {
+      "word": "glirarium",
+      "def": "an enclosure historically used for fattening dormice for the table",
+      "tags": [
+        "archaic",
+        "rare"
+      ]
+    },
+    {
+      "word": "peridot",
+      "def": "a green gemstone, a variety of olivine",
+      "tags": [
+        "rare"
+      ]
+    },
+    {
+      "word": "contrapposto",
+      "def": "a pose in which the body's weight rests asymmetrically on one leg",
+      "tags": [
+        "art",
+        "rare"
+      ]
+    },
+    {
+      "word": "qualia",
+      "def": "individual instances of subjective conscious experience",
+      "tags": [
+        "philosophy",
+        "technical"
+      ]
+    },
+    {
+      "word": "phenology",
+      "def": "the study of cyclic and seasonal natural phenomena",
+      "tags": [
+        "technical"
+      ]
+    },
+    {
+      "word": "strigil",
+      "def": "a curved tool used to scrape sweat and dirt from the skin",
+      "tags": [
+        "archaic",
+        "rare"
+      ]
+    },
+    {
+      "word": "huggermugger",
+      "def": "secrecy, or a disorderly confusion",
+      "tags": [
+        "archaic",
+        "rare"
+      ]
+    },
+    {
+      "word": "adumbration",
+      "def": "a faint or partial indication; a foreshadowing",
+      "tags": [
+        "formal"
+      ]
+    },
+    {
+      "word": "umwelt",
+      "def": "the particular perceptual world an organism experiences and acts within",
+      "tags": [
+        "philosophy",
+        "biology"
+      ]
+    },
+    {
+      "word": "nictitating membrane",
+      "def": "a transparent inner eyelid present in some animals",
+      "tags": [
+        "biology",
+        "technical"
+      ]
+    },
+    {
+      "word": "temenos",
+      "def": "a sacred enclosure marking ground reserved for a deity",
+      "tags": [
+        "religious",
+        "rare"
+      ]
+    },
+    {
+      "word": "pudenda",
+      "def": "the external genital organs",
+      "tags": [
+        "anatomical",
+        "technical"
+      ]
+    },
+    {
+      "word": "paraclete",
+      "def": "an advocate or intercessor called upon for aid",
+      "tags": [
+        "religious",
+        "rare",
+        "people_clergy"
+      ]
+    },
+    {
+      "word": "punding",
+      "def": "repetitive, purposeless behaviour observed in certain conditions",
+      "tags": [
+        "medical",
+        "rare"
+      ]
+    },
+    {
+      "word": "lector",
+      "def": "one who reads aloud, especially from scripture during a service",
+      "tags": [
+        "religious",
+        "people_clergy"
+      ]
+    },
+    {
+      "word": "polysemy",
+      "def": "the coexistence of multiple meanings within a single word",
+      "tags": [
+        "technical",
+        "rare"
+      ]
+    },
+    {
+      "word": "nostrum",
+      "def": "a remedy of dubious effectiveness, often promoted by its maker",
+      "tags": [
+        "formal"
+      ]
+    },
+    {
+      "word": "calumny",
+      "def": "a false and malicious statement intended to damage reputation",
+      "tags": [
+        "formal",
+        "legal"
+      ]
+    },
+    {
+      "word": "pawl",
+      "def": "a mechanism permitting motion in only one direction",
+      "tags": [
+        "technical"
+      ]
+    },
+    {
+      "word": "senescence",
+      "def": "the gradual deterioration that accompanies aging",
+      "tags": [
+        "biology",
+        "formal"
+      ]
+    },
+    {
+      "word": "scapegrace",
+      "def": "an incorrigible, mischievous rogue",
+      "tags": [
+        "archaic",
+        "rare",
+        "people_base"
+      ]
+    },
+    {
+      "word": "padrone",
+      "def": "a patron, master, or employer",
+      "tags": [
+        "archaic",
+        "people_noble"
+      ]
+    },
+    {
+      "word": "junker",
+      "def": "a member of the landed aristocracy, especially in old Prussia",
+      "tags": [
+        "archaic",
+        "people_noble"
+      ]
+    },
+    {
+      "word": "physiocrats",
+      "def": "early economists holding that agriculture was the sole source of value",
+      "tags": [
+        "economics",
+        "rare"
+      ]
+    },
+    {
+      "word": "bagatelle",
+      "def": "a thing of little importance; a trifle",
+      "tags": [
+        "formal"
+      ]
+    },
+    {
+      "word": "petrichor",
+      "def": "the distinctive smell that accompanies rain after a dry spell",
+      "tags": [
+        "rare"
+      ]
+    },
+    {
+      "word": "geosmin",
+      "def": "the compound responsible for the characteristic odour of damp earth",
+      "tags": [
+        "technical",
+        "rare"
+      ]
+    },
+    {
+      "word": "canicular days",
+      "def": "the hottest period of summer, the dog days",
+      "tags": [
+        "archaic",
+        "rare"
+      ]
+    },
+    {
+      "word": "guttler",
+      "def": "one who eats greedily and without restraint",
+      "tags": [
+        "rare",
+        "people_base"
+      ]
+    },
+    {
+      "word": "effluvium",
+      "def": "an unpleasant or noxious odour or discharge",
+      "tags": [
+        "formal"
+      ]
+    },
+    {
+      "word": "cognomen",
+      "def": "a nickname, or the third, distinguishing name of a Roman citizen",
+      "tags": [
+        "archaic",
+        "rare"
+      ]
+    },
+    {
+      "word": "drubbing",
+      "def": "a severe defeat or beating",
+      "tags": [
+        "formal"
+      ]
+    },
+    {
+      "word": "catalepsy",
+      "def": "a trance or seizure marked by rigid muscular fixity",
+      "tags": [
+        "medical"
+      ]
+    },
+    {
+      "word": "qualm",
+      "def": "a sudden misgiving or uneasy feeling",
+      "tags": [
+        "formal"
+      ]
+    },
+    {
+      "word": "ontogeny",
+      "def": "the course of development of an individual organism",
+      "tags": [
+        "biology",
+        "technical"
+      ]
+    },
+    {
+      "word": "calescence",
+      "def": "a growing warmth; the process of becoming heated",
+      "tags": [
+        "rare",
+        "formal"
+      ]
+    },
+    {
+      "word": "apokatastasis",
+      "def": "a restoration to an original or ideal condition, often theological",
+      "tags": [
+        "religious",
+        "rare"
+      ]
+    },
+    {
+      "word": "ataraxia",
+      "def": "a state of tranquil freedom from emotional disturbance",
+      "tags": [
+        "philosophy"
+      ]
+    },
+    {
+      "word": "terroir",
+      "def": "the complete natural environment that shapes a region's produce",
+      "tags": [
+        "rare"
+      ]
+    },
+    {
+      "word": "augur",
+      "def": "one who divines the future from omens and signs",
+      "tags": [
+        "religious",
+        "archaic"
+      ]
+    },
+    {
+      "word": "gibbet",
+      "def": "a post or frame from which executed bodies were displayed",
+      "tags": [
+        "archaic"
+      ]
+    },
+    {
+      "word": "apricity",
+      "def": "the warmth of the sun felt in winter",
+      "tags": [
+        "rare"
+      ]
+    },
+    {
+      "word": "bawcock",
+      "def": "a fine fellow; a term of familiar address",
+      "tags": [
+        "archaic",
+        "rare",
+        "people_base"
+      ]
+    },
+    {
+      "word": "gallimaufry",
+      "def": "a confused jumble or medley of disparate things",
+      "tags": [
+        "formal",
+        "rare"
+      ]
+    },
+    {
+      "word": "trifurcation",
+      "def": "a division into three branches or parts",
+      "tags": [
+        "formal",
+        "technical"
+      ]
+    },
+    {
+      "word": "stridulation",
+      "def": "a shrill sound made by certain insects by rubbing body parts together",
+      "tags": [
+        "biology"
+      ]
+    },
+    {
+      "word": "talionic justice",
+      "def": "retributive justice exacted in exact kind, an eye for an eye",
+      "tags": [
+        "legal",
+        "archaic"
+      ]
+    },
+    {
+      "word": "chicane",
+      "def": "a deceptive manoeuvre; also a sharp double bend in a road",
+      "tags": [
+        "formal"
+      ]
+    },
+    {
+      "word": "cottier",
+      "def": "a peasant who rents a small holding from a landowner",
+      "tags": [
+        "archaic",
+        "economics",
+        "people_base"
+      ]
+    },
+    {
+      "word": "dandiprat",
+      "def": "a small or insignificant person",
+      "tags": [
+        "archaic",
+        "rare",
+        "people_base"
+      ]
+    },
+    {
+      "word": "picaroon",
+      "def": "a rogue, adventurer, or pirate",
+      "tags": [
+        "archaic",
+        "people_base"
+      ]
+    },
+    {
+      "word": "perfidy",
+      "def": "deliberate breach of faith; treachery",
+      "tags": [
+        "formal"
+      ]
+    },
+    {
+      "word": "catachresis",
+      "def": "the strained or improper use of a word or phrase",
+      "tags": [
+        "technical",
+        "rare"
+      ]
+    },
+    {
+      "word": "chrism",
+      "def": "oil consecrated for use in religious anointing",
+      "tags": [
+        "religious"
+      ]
+    },
+    {
+      "word": "fuller",
+      "def": "one whose trade is the cleansing and thickening of cloth",
+      "tags": [
+        "archaic",
+        "economics",
+        "people_base"
+      ]
+    },
+    {
+      "word": "farrier",
+      "def": "one who shoes and tends to the hooves of horses",
+      "tags": [
+        "archaic",
+        "people_base"
+      ]
+    },
+    {
+      "word": "pellex",
+      "def": "a concubine, in the legal terminology of antiquity",
+      "tags": [
+        "archaic",
+        "rare"
+      ]
+    },
+    {
+      "word": "samovar",
+      "def": "a heated metal urn used to boil water for tea",
+      "tags": [
+        "rare"
+      ]
+    },
+    {
+      "word": "demesne",
+      "def": "land attached to a manor and retained for the lord's own use",
+      "tags": [
+        "archaic",
+        "economics"
+      ]
+    },
+    {
+      "word": "charognard",
+      "def": "a scavenger",
+      "tags": [
+        "rare"
+      ]
+    },
+    {
+      "word": "grognard",
+      "def": "a long-serving veteran, especially a seasoned soldier",
+      "tags": [
+        "military",
+        "archaic",
+        "people_martial"
+      ]
+    },
+    {
+      "word": "coprolites",
+      "def": "fossilised excrement, of value to those who study the past",
+      "tags": [
+        "technical",
+        "rare"
+      ]
+    },
+    {
+      "word": "doctrinaire",
+      "def": "one who applies a theory or doctrine rigidly, without practical flexibility",
+      "tags": [
+        "formal"
+      ]
+    },
+    {
+      "word": "ideologue",
+      "def": "an uncompromising advocate of a particular ideology",
+      "tags": [
+        "formal"
+      ]
+    },
+    {
+      "word": "yeggman",
+      "def": "a burglar who specialises in breaking open safes",
+      "tags": [
+        "archaic",
+        "rare",
+        "people_base"
+      ]
+    },
+    {
+      "word": "scorp",
+      "def": "a curved cutting tool used by coopers and woodworkers",
+      "tags": [
+        "rare"
+      ]
+    },
+    {
+      "word": "sodalities",
+      "def": "religious or fraternal associations bound by common purpose",
+      "tags": [
+        "religious",
+        "formal"
+      ]
+    },
+    {
+      "word": "seigniorage",
+      "def": "the profit realised by an authority from the issuing of currency",
+      "tags": [
+        "economics",
+        "rare"
+      ]
+    },
+    {
+      "word": "demurrage",
+      "def": "a charge levied for the delayed return or unloading of goods",
+      "tags": [
+        "economics"
+      ]
+    },
+    {
+      "word": "refectory",
+      "def": "a communal dining hall, especially in a monastery",
+      "tags": [
+        "religious",
+        "architecture"
+      ]
+    },
+    {
+      "word": "caudle",
+      "def": "a warm spiced drink of ale or wine, given to invalids",
+      "tags": [
+        "archaic",
+        "rare"
+      ]
+    },
+    {
+      "word": "armiger",
+      "def": "one formally entitled to bear a coat of arms",
+      "tags": [
+        "archaic",
+        "military",
+        "people_noble"
+      ]
+    },
+    {
+      "word": "carnifex",
+      "def": "a public executioner",
+      "tags": [
+        "archaic",
+        "rare",
+        "people_base"
+      ]
+    },
+    {
+      "word": "carnyx",
+      "def": "a tall bronze war-horn, sounded to herald battle",
+      "tags": [
+        "military",
+        "rare"
+      ]
+    },
+    {
+      "word": "lambrequin",
+      "def": "ornamental drapery, or the cloth mantling behind a knight's helm",
+      "tags": [
+        "heraldic",
+        "archaic"
+      ]
+    },
+    {
+      "word": "corvée",
+      "def": "unpaid labour exacted by an authority in place of tax",
+      "tags": [
+        "archaic",
+        "economics"
+      ]
+    },
+    {
+      "word": "coffle",
+      "def": "a line of slaves, prisoners, or animals bound and driven together",
+      "tags": [
+        "archaic"
+      ]
+    },
+    {
+      "word": "dacoit",
+      "def": "a member of an armed band of robbers",
+      "tags": [
+        "archaic",
+        "rare"
+      ]
+    },
+    {
+      "word": "lascar",
+      "def": "a sailor serving aboard merchant vessels, especially from the East",
+      "tags": [
+        "nautical",
+        "archaic"
+      ]
+    },
+    {
+      "word": "vermiculation",
+      "def": "a pattern of wavering lines resembling worm tracks",
+      "tags": [
+        "art",
+        "technical"
+      ]
+    },
+    {
+      "word": "epithet",
+      "def": "a descriptive phrase attached to a person's name or character",
+      "tags": [
+        "formal"
+      ]
+    },
+    {
+      "word": "psychopomp",
+      "def": "a guide who conducts the souls of the dead to the afterlife",
+      "tags": [
+        "religious",
+        "rare"
+      ]
+    },
+    {
+      "word": "katabasis",
+      "def": "a journey or descent into the underworld",
+      "tags": [
+        "formal",
+        "rare"
+      ]
+    },
+    {
+      "word": "hierophant",
+      "def": "an interpreter of sacred mysteries; a high priest",
+      "tags": [
+        "religious",
+        "people_clergy"
+      ]
+    },
+    {
+      "word": "interregnum",
+      "def": "a period during which a throne or office stands vacant",
+      "tags": [
+        "formal",
+        "archaic"
+      ]
+    },
+    {
+      "word": "sinecure",
+      "def": "an office that grants profit or status with little or no real duty",
+      "tags": [
+        "formal",
+        "economics"
+      ]
+    },
+    {
+      "word": "casuistry",
+      "def": "reasoning used to resolve moral problems by applying general principles to specific cases",
+      "tags": [
+        "formal",
+        "philosophy"
+      ]
+    },
+    {
+      "word": "palimpsest",
+      "def": "a surface or document bearing visible traces of earlier writing beneath the present text",
+      "tags": [
+        "formal",
+        "rare"
+      ]
+    },
+    {
+      "word": "obeisance",
+      "def": "a gesture or bow expressing deference and submission",
+      "tags": [
+        "archaic",
+        "courtly"
+      ]
+    },
+    {
+      "word": "sumptuary",
+      "def": "a law restricting personal expenditure, especially on dress or food",
+      "tags": [
+        "legal",
+        "archaic"
+      ]
+    },
+    {
+      "word": "glossolalia",
+      "def": "speech, especially in religious ecstasy, in no known language",
+      "tags": [
+        "religious",
+        "rare"
+      ]
+    },
+    {
+      "word": "apostasy",
+      "def": "the formal abandonment of one's religion or principles",
+      "tags": [
+        "religious"
+      ]
+    },
+    {
+      "word": "investiture",
+      "def": "the formal granting of authority or rank to an office-holder",
+      "tags": [
+        "formal",
+        "courtly"
+      ]
+    },
+    {
+      "word": "chiliasm",
+      "def": "belief in a coming thousand-year age of peace or judgment",
+      "tags": [
+        "religious",
+        "rare"
+      ]
+    },
+    {
+      "word": "votary",
+      "def": "one bound by vows to a particular religious devotion",
+      "tags": [
+        "religious",
+        "people_clergy"
+      ]
+    },
+    {
+      "word": "plenipotentiary",
+      "def": "an envoy invested with full authority to act on a sovereign's behalf",
+      "tags": [
+        "formal",
+        "courtly",
+        "people_noble"
+      ]
+    },
+    {
+      "word": "usufruct",
+      "def": "the legal right to use and profit from property belonging to another",
+      "tags": [
+        "legal",
+        "rare"
+      ]
+    },
+    {
+      "word": "tithe",
+      "def": "a tenth part of produce or income rendered as a religious due",
+      "tags": [
+        "religious",
+        "economics"
+      ]
+    },
+    {
+      "word": "oblation",
+      "def": "an offering made to a deity or sacred purpose",
+      "tags": [
+        "religious"
+      ]
+    },
+    {
+      "word": "chatelaine",
+      "def": "the mistress of a large household or castle",
+      "tags": [
+        "archaic",
+        "courtly",
+        "people_noble"
+      ]
+    },
+    {
+      "word": "manumission",
+      "def": "the formal act of freeing a person from servitude",
+      "tags": [
+        "legal",
+        "archaic"
+      ]
+    },
+    {
+      "word": "sequestration",
+      "def": "the seizure and holding of property pending settlement of a claim",
+      "tags": [
+        "legal"
+      ]
+    },
+    {
+      "word": "factotum",
+      "def": "a servant or employee entrusted with a wide range of duties",
+      "tags": [
+        "formal",
+        "people_base"
+      ]
+    },
+    {
+      "word": "abeyance",
+      "def": "a temporary suspension of activity, status, or right",
+      "tags": [
+        "formal",
+        "legal"
+      ]
+    },
+    {
+      "word": "impost",
+      "def": "a tax or duty levied on goods",
+      "tags": [
+        "economics",
+        "archaic"
+      ]
+    },
+    {
+      "word": "tocsin",
+      "def": "an alarm bell or signal warning of danger",
+      "tags": [
+        "archaic"
+      ]
+    }
+  ],
+  "adjective": [
+    {
+      "word": "peripatetic",
+      "def": "travelling from place to place, especially for work",
+      "tags": [
+        "formal",
+        "mundane"
+      ]
+    },
+    {
+      "word": "sanguine",
+      "def": "cheerfully optimistic in a difficult situation",
+      "tags": [
+        "formal",
+        "hope"
+      ]
+    },
+    {
+      "word": "malthusian",
+      "def": "relating to the theory that population growth will outstrip food supply",
+      "tags": [
+        "technical",
+        "economics",
+        "mundane"
+      ]
+    },
+    {
+      "word": "obstreperous",
+      "def": "noisy and difficult to control",
+      "tags": [
+        "formal",
+        "doom"
+      ]
+    },
+    {
+      "word": "crozzled",
+      "def": "burnt or shrivelled around the edges",
+      "tags": [
+        "rare",
+        "doom"
+      ]
+    },
+    {
+      "word": "vermicular",
+      "def": "resembling the form or movement of a worm",
+      "tags": [
+        "technical",
+        "rare",
+        "mundane"
+      ]
+    },
+    {
+      "word": "lambent",
+      "def": "glowing or flickering with a soft radiance",
+      "tags": [
+        "formal",
+        "sacred"
+      ]
+    },
+    {
+      "word": "fenestrate",
+      "def": "having window-like openings",
+      "tags": [
+        "technical",
+        "mundane"
+      ]
+    },
+    {
+      "word": "mephitic",
+      "def": "foul-smelling, noxious",
+      "tags": [
+        "formal",
+        "doom"
+      ]
+    },
+    {
+      "word": "maundering",
+      "def": "talking in a rambling, aimless manner",
+      "tags": [
+        "rare",
+        "mundane"
+      ]
+    },
+    {
+      "word": "littoral",
+      "def": "relating to the shore of a sea or lake",
+      "tags": [
+        "technical",
+        "nautical",
+        "mundane"
+      ]
+    },
+    {
+      "word": "intestate",
+      "def": "having died without having made a valid will",
+      "tags": [
+        "legal",
+        "mundane"
+      ]
+    },
+    {
+      "word": "accipitral",
+      "def": "hawk-like; of the nature of a bird of prey",
+      "tags": [
+        "rare",
+        "biology",
+        "mundane"
+      ]
+    },
+    {
+      "word": "plangent",
+      "def": "loud and resonant, often with a melancholy quality",
+      "tags": [
+        "formal",
+        "doom"
+      ]
+    },
+    {
+      "word": "nugatory",
+      "def": "of no real value or importance; trifling",
+      "tags": [
+        "formal",
+        "legal",
+        "mundane"
+      ]
+    },
+    {
+      "word": "epicene",
+      "def": "having characteristics of both sexes, or belonging to neither",
+      "tags": [
+        "formal",
+        "rare",
+        "mundane"
+      ]
+    },
+    {
+      "word": "avuncular",
+      "def": "kind and friendly toward a younger person, in the manner of an uncle",
+      "tags": [
+        "formal",
+        "hope"
+      ]
+    },
+    {
+      "word": "knaggy",
+      "def": "knotty and rough; also irritable in temperament",
+      "tags": [
+        "archaic",
+        "rare",
+        "mundane"
+      ]
+    },
+    {
+      "word": "rugose",
+      "def": "covered with wrinkles or ridges",
+      "tags": [
+        "technical",
+        "biology",
+        "mundane"
+      ]
+    },
+    {
+      "word": "ostrobogulous",
+      "def": "mildly indecent or bizarre, in an amusing way",
+      "tags": [
+        "rare",
+        "mundane"
+      ]
+    },
+    {
+      "word": "gibbous",
+      "def": "convex on both sides; more than half illuminated, as the moon",
+      "tags": [
+        "technical",
+        "mundane"
+      ]
+    },
+    {
+      "word": "dearsome",
+      "def": "dear, beloved",
+      "tags": [
+        "archaic",
+        "rare",
+        "hope"
+      ]
+    },
+    {
+      "word": "sybaritic",
+      "def": "fond of luxury and sensuous pleasure",
+      "tags": [
+        "formal"
+      ]
+    },
+    {
+      "word": "crapulous",
+      "def": "given to gross indulgence in food or drink, or suffering its effects",
+      "tags": [
+        "formal",
+        "rare",
+        "doom"
+      ]
+    },
+    {
+      "word": "involute",
+      "def": "intricately curled or coiled inward",
+      "tags": [
+        "technical",
+        "formal",
+        "mundane"
+      ]
+    },
+    {
+      "word": "propaedeutic",
+      "def": "serving as preliminary instruction before further study",
+      "tags": [
+        "formal",
+        "rare",
+        "mundane"
+      ]
+    },
+    {
+      "word": "sapient",
+      "def": "possessing great wisdom",
+      "tags": [
+        "formal",
+        "hope"
+      ]
+    },
+    {
+      "word": "malapert",
+      "def": "impudently bold; saucy",
+      "tags": [
+        "archaic",
+        "rare",
+        "doom"
+      ]
+    },
+    {
+      "word": "viscid",
+      "def": "having a glutinous, sticky consistency",
+      "tags": [
+        "technical",
+        "mundane"
+      ]
+    },
+    {
+      "word": "callipygian",
+      "def": "having well-shaped buttocks",
+      "tags": [
+        "formal",
+        "rare"
+      ]
+    },
+    {
+      "word": "hortative",
+      "def": "giving strong encouragement or exhortation",
+      "tags": [
+        "formal",
+        "mundane"
+      ]
+    },
+    {
+      "word": "internecine",
+      "def": "mutually destructive, especially of conflict within a group",
+      "tags": [
+        "formal",
+        "doom"
+      ]
+    },
+    {
+      "word": "ravening",
+      "def": "voraciously hungry; predatory",
+      "tags": [
+        "formal",
+        "archaic",
+        "doom"
+      ]
+    },
+    {
+      "word": "labile",
+      "def": "prone to change or instability",
+      "tags": [
+        "technical",
+        "formal",
+        "doom"
+      ]
+    },
+    {
+      "word": "epistemophilic",
+      "def": "marked by a strong drive to acquire knowledge",
+      "tags": [
+        "technical",
+        "rare",
+        "mundane"
+      ]
+    },
+    {
+      "word": "lachrymose",
+      "def": "tearful, or given to weeping",
+      "tags": [
+        "formal",
+        "doom"
+      ]
+    },
+    {
+      "word": "bibulous",
+      "def": "excessively fond of drinking alcohol",
+      "tags": [
+        "formal",
+        "rare",
+        "mundane"
+      ]
+    },
+    {
+      "word": "noisome",
+      "def": "having an extremely offensive smell",
+      "tags": [
+        "formal",
+        "archaic",
+        "doom"
+      ]
+    },
+    {
+      "word": "protean",
+      "def": "readily able to change form or function",
+      "tags": [
+        "formal",
+        "hope"
+      ]
+    },
+    {
+      "word": "anfractuous",
+      "def": "winding, sinuous, full of turns",
+      "tags": [
+        "formal",
+        "rare",
+        "mundane"
+      ]
+    },
+    {
+      "word": "steatopygous",
+      "def": "marked by an accumulation of fat about the buttocks",
+      "tags": [
+        "technical",
+        "rare"
+      ]
+    },
+    {
+      "word": "saprophytic",
+      "def": "feeding on dead or decaying organic matter",
+      "tags": [
+        "biology",
+        "technical",
+        "mundane"
+      ]
+    },
+    {
+      "word": "picayune",
+      "def": "of little value or importance; petty",
+      "tags": [
+        "formal",
+        "mundane"
+      ]
+    },
+    {
+      "word": "hauntological",
+      "def": "concerned with cultural traces of futures that never arrived",
+      "tags": [
+        "philosophy",
+        "rare",
+        "doom"
+      ]
+    },
+    {
+      "word": "incarnadine",
+      "def": "flesh-coloured, or blood-red",
+      "tags": [
+        "formal",
+        "archaic",
+        "doom"
+      ]
+    },
+    {
+      "word": "purulent",
+      "def": "containing or discharging pus",
+      "tags": [
+        "medical",
+        "doom"
+      ]
+    },
+    {
+      "word": "unctuous",
+      "def": "excessively flattering or smooth in manner",
+      "tags": [
+        "formal",
+        "doom"
+      ]
+    },
+    {
+      "word": "hortatory",
+      "def": "tending to exhort or encourage strongly",
+      "tags": [
+        "formal",
+        "mundane"
+      ]
+    },
+    {
+      "word": "calcareous",
+      "def": "composed largely of calcium carbonate",
+      "tags": [
+        "technical",
+        "mundane"
+      ]
+    },
+    {
+      "word": "moribund",
+      "def": "approaching death or extinction; in terminal decline",
+      "tags": [
+        "formal",
+        "doom"
+      ]
+    },
+    {
+      "word": "diaphanous",
+      "def": "light and delicate enough to admit light; translucent",
+      "tags": [
+        "formal",
+        "sacred"
+      ]
+    },
+    {
+      "word": "materterine",
+      "def": "relating to a maternal aunt",
+      "tags": [
+        "rare",
+        "technical",
+        "mundane"
+      ]
+    },
+    {
+      "word": "fulvous",
+      "def": "reddish-yellow; tawny",
+      "tags": [
+        "formal",
+        "rare",
+        "mundane"
+      ]
+    },
+    {
+      "word": "aureate",
+      "def": "golden in colour; also marked by a grandiloquent literary style",
+      "tags": [
+        "formal",
+        "archaic",
+        "sacred"
+      ]
+    },
+    {
+      "word": "tenebrous",
+      "def": "dark, shadowy, obscure",
+      "tags": [
+        "formal",
+        "archaic",
+        "doom"
+      ]
+    },
+    {
+      "word": "omnivalent",
+      "def": "capable of many possible interpretations or applications",
+      "tags": [
+        "rare",
+        "technical",
+        "mundane"
+      ]
+    },
+    {
+      "word": "trifurcated",
+      "def": "divided into three branches or forks",
+      "tags": [
+        "formal",
+        "technical",
+        "mundane"
+      ]
+    },
+    {
+      "word": "fainéant",
+      "def": "idle and ineffectual; given to doing nothing",
+      "tags": [
+        "archaic",
+        "rare",
+        "doom"
+      ]
+    },
+    {
+      "word": "febrile",
+      "def": "feverish, or marked by nervous excitement",
+      "tags": [
+        "formal",
+        "medical",
+        "doom"
+      ]
+    },
+    {
+      "word": "rebarbative",
+      "def": "repellent; causing aversion or distaste",
+      "tags": [
+        "formal",
+        "rare",
+        "doom"
+      ]
+    },
+    {
+      "word": "erubescent",
+      "def": "reddening, as in blushing",
+      "tags": [
+        "formal",
+        "rare",
+        "mundane"
+      ]
+    },
+    {
+      "word": "autochthonous",
+      "def": "native or indigenous to the place where found",
+      "tags": [
+        "formal",
+        "technical",
+        "mundane"
+      ]
+    },
+    {
+      "word": "pecuniary",
+      "def": "relating to or consisting of money",
+      "tags": [
+        "formal",
+        "economics",
+        "mundane"
+      ]
+    },
+    {
+      "word": "regalian",
+      "def": "pertaining to the rights and privileges of a sovereign",
+      "tags": [
+        "formal",
+        "archaic",
+        "mundane"
+      ]
+    },
+    {
+      "word": "prolix",
+      "def": "tediously lengthy and wordy",
+      "tags": [
+        "formal",
+        "mundane"
+      ]
+    },
+    {
+      "word": "rubicund",
+      "def": "having a healthy, ruddy complexion",
+      "tags": [
+        "formal",
+        "hope"
+      ]
+    },
+    {
+      "word": "cathemeral",
+      "def": "active at irregular intervals across the day and night",
+      "tags": [
+        "biology",
+        "technical",
+        "mundane"
+      ]
+    },
+    {
+      "word": "thigmotactic",
+      "def": "oriented or moved by response to touch",
+      "tags": [
+        "biology",
+        "technical",
+        "mundane"
+      ]
+    },
+    {
+      "word": "fuligin",
+      "def": "sooty, dark black",
+      "tags": [
+        "rare",
+        "formal",
+        "doom"
+      ]
+    },
+    {
+      "word": "doctrinaire",
+      "def": "rigidly attached to a theory without regard to practical matters",
+      "tags": [
+        "formal",
+        "doom"
+      ]
+    },
+    {
+      "word": "sempiternal",
+      "def": "eternal; everlasting",
+      "tags": [
+        "formal",
+        "archaic",
+        "sacred"
+      ]
+    },
+    {
+      "word": "obdurate",
+      "def": "stubbornly refusing to change one's mind or course",
+      "tags": [
+        "formal",
+        "doom"
+      ]
+    },
+    {
+      "word": "perspicacious",
+      "def": "having keen insight or discernment",
+      "tags": [
+        "formal",
+        "hope"
+      ]
+    },
+    {
+      "word": "chthonic",
+      "def": "belonging to or dwelling beneath the earth",
+      "tags": [
+        "religious",
+        "rare",
+        "sacred"
+      ]
+    },
+    {
+      "word": "ineffable",
+      "def": "too great or extreme to be expressed in words",
+      "tags": [
+        "formal",
+        "sacred"
+      ]
+    },
+    {
+      "word": "lugubrious",
+      "def": "mournful, dismal, exaggeratedly so",
+      "tags": [
+        "formal",
+        "doom"
+      ]
+    },
+    {
+      "word": "perfidious",
+      "def": "deceitful and untrustworthy",
+      "tags": [
+        "formal",
+        "doom"
+      ]
+    },
+    {
+      "word": "propitious",
+      "def": "favourable; indicating a good chance of success",
+      "tags": [
+        "formal",
+        "archaic",
+        "hope"
+      ]
+    },
+    {
+      "word": "truculent",
+      "def": "eager to fight; aggressively defiant",
+      "tags": [
+        "formal",
+        "doom"
+      ]
+    },
+    {
+      "word": "sclerotic",
+      "def": "hardened and resistant to change or movement",
+      "tags": [
+        "technical",
+        "formal",
+        "doom"
+      ]
+    },
+    {
+      "word": "venal",
+      "def": "susceptible to bribery; corruptible",
+      "tags": [
+        "formal",
+        "legal",
+        "doom"
+      ]
+    },
+    {
+      "word": "mercurial",
+      "def": "subject to sudden, unpredictable changes of mood",
+      "tags": [
+        "formal",
+        "mundane"
+      ]
+    },
+    {
+      "word": "recondite",
+      "def": "obscure and known to very few",
+      "tags": [
+        "formal",
+        "mundane"
+      ]
+    },
+    {
+      "word": "pellucid",
+      "def": "transparently clear, in substance or expression",
+      "tags": [
+        "formal",
+        "hope"
+      ]
+    },
+    {
+      "word": "querulous",
+      "def": "complaining in a peevish, whining manner",
+      "tags": [
+        "formal",
+        "doom"
+      ]
+    },
+    {
+      "word": "adamantine",
+      "def": "unbreakable, unyielding, like the hardest stone",
+      "tags": [
+        "formal",
+        "archaic",
+        "sacred"
+      ]
+    },
+    {
+      "word": "opportune",
+      "def": "occurring at a favourable or appropriate time",
+      "tags": [
+        "formal",
+        "hope"
+      ]
+    },
+    {
+      "word": "verdant",
+      "def": "green with vegetation; lush",
+      "tags": [
+        "formal",
+        "hope"
+      ]
+    },
+    {
+      "word": "obsequious",
+      "def": "excessively eager to please or obey",
+      "tags": [
+        "formal",
+        "doom"
+      ]
+    },
+    {
+      "word": "asseverative",
+      "def": "affirming earnestly and solemnly",
+      "tags": [
+        "formal",
+        "legal",
+        "mundane"
+      ]
+    },
+    {
+      "word": "peremptory",
+      "def": "insisting on immediate compliance, without room for refusal",
+      "tags": [
+        "formal",
+        "legal",
+        "doom"
+      ]
+    }
+  ],
+  "verb": [
+    {
+      "word": "peregrinate",
+      "def": "to travel or journey, especially from place to place on foot",
+      "tags": [
+        "formal",
+        "archaic"
+      ]
+    },
+    {
+      "word": "arrogate",
+      "def": "to claim or seize for oneself without right",
+      "tags": [
+        "formal",
+        "legal"
+      ]
+    },
+    {
+      "word": "micturate",
+      "def": "to urinate",
+      "tags": [
+        "medical",
+        "technical"
+      ]
+    },
+    {
+      "word": "palter",
+      "def": "to act or talk insincerely; to equivocate",
+      "tags": [
+        "archaic",
+        "rare"
+      ]
+    },
+    {
+      "word": "absquatulate",
+      "def": "to leave hurriedly or secretly",
+      "tags": [
+        "archaic",
+        "rare"
+      ]
+    },
+    {
+      "word": "latibulate",
+      "def": "to retreat into a hiding place",
+      "tags": [
+        "rare",
+        "archaic"
+      ]
+    },
+    {
+      "word": "adumbrate",
+      "def": "to outline faintly, or to foreshadow",
+      "tags": [
+        "formal"
+      ]
+    },
+    {
+      "word": "furl",
+      "def": "to roll up tightly, as a sail or flag",
+      "tags": [
+        "nautical"
+      ]
+    },
+    {
+      "word": "maunder",
+      "def": "to talk in a rambling, aimless manner",
+      "tags": [
+        "archaic"
+      ]
+    },
+    {
+      "word": "osculate",
+      "def": "to kiss",
+      "tags": [
+        "formal",
+        "rare"
+      ]
+    },
+    {
+      "word": "vouchsafe",
+      "def": "to grant or give in a gracious, condescending manner",
+      "tags": [
+        "archaic",
+        "formal"
+      ]
+    },
+    {
+      "word": "importune",
+      "def": "to press persistently for something",
+      "tags": [
+        "formal"
+      ]
+    },
+    {
+      "word": "remonstrate",
+      "def": "to make a forceful protest or objection",
+      "tags": [
+        "formal"
+      ]
+    },
+    {
+      "word": "abjure",
+      "def": "to renounce or repudiate formally and solemnly",
+      "tags": [
+        "formal",
+        "religious"
+      ]
+    },
+    {
+      "word": "inveigh",
+      "def": "to speak or write with strong hostility against something",
+      "tags": [
+        "formal"
+      ]
+    },
+    {
+      "word": "expostulate",
+      "def": "to express strong disapproval or disagreement",
+      "tags": [
+        "formal"
+      ]
+    },
+    {
+      "word": "dissemble",
+      "def": "to disguise one's true motives or feelings",
+      "tags": [
+        "formal"
+      ]
+    },
+    {
+      "word": "sequester",
+      "def": "to isolate or hide away; to seize and hold property",
+      "tags": [
+        "formal",
+        "legal"
+      ]
+    },
+    {
+      "word": "propitiate",
+      "def": "to win or regain the favour of, by conciliatory acts",
+      "tags": [
+        "formal",
+        "religious"
+      ]
+    },
+    {
+      "word": "adjure",
+      "def": "to urge or request earnestly, as if under oath",
+      "tags": [
+        "formal",
+        "archaic"
+      ]
+    },
+    {
+      "word": "disport",
+      "def": "to amuse oneself; to display in an unrestrained manner",
+      "tags": [
+        "archaic",
+        "formal"
+      ]
+    },
+    {
+      "word": "comport",
+      "def": "to conduct oneself in a particular manner",
+      "tags": [
+        "formal"
+      ]
+    },
+    {
+      "word": "gainsay",
+      "def": "to deny or contradict",
+      "tags": [
+        "archaic",
+        "formal"
+      ]
+    },
+    {
+      "word": "inculcate",
+      "def": "to instil an idea or habit through persistent repetition",
+      "tags": [
+        "formal"
+      ]
+    },
+    {
+      "word": "obtrude",
+      "def": "to impose oneself or one's views without invitation",
+      "tags": [
+        "formal"
+      ]
+    }
+  ],
+  "phrase": [
+    {
+      "word": "mutatis mutandis",
+      "def": "with the necessary changes having been made",
+      "tags": [
+        "legal",
+        "formal"
+      ]
+    },
+    {
+      "word": "raking light",
+      "def": "illumination striking a surface at a low angle, revealing its texture",
+      "tags": [
+        "technical",
+        "art"
+      ]
+    },
+    {
+      "word": "nictitating membrane",
+      "def": "a transparent inner eyelid present in some animals",
+      "tags": [
+        "biology",
+        "technical"
+      ]
+    },
+    {
+      "word": "talionic justice",
+      "def": "retribution exacted in exact kind, as in an eye for an eye",
+      "tags": [
+        "legal",
+        "archaic"
+      ]
+    },
+    {
+      "word": "prolix Polonius",
+      "def": "an epithet for a tedious, pompous advisor who rambles at length yet says little of worth",
+      "tags": [
+        "epithet",
+        "rare"
+      ]
+    },
+    {
+      "word": "auto-da-fé",
+      "def": "a ritual of public penance, historically including execution by fire",
+      "tags": [
+        "archaic",
+        "religious"
+      ]
+    },
+    {
+      "word": "sword of Damocles",
+      "def": "a constant, looming threat of disaster despite present calm",
+      "tags": [
+        "epithet"
+      ]
+    },
+    {
+      "word": "sub rosa",
+      "def": "done in secrecy, under conditions of confidentiality",
+      "tags": [
+        "legal",
+        "formal"
+      ]
+    },
+    {
+      "word": "in extremis",
+      "def": "at the point of death, or in extreme difficulty",
+      "tags": [
+        "formal",
+        "legal"
+      ]
+    },
+    {
+      "word": "de facto",
+      "def": "existing in practice, whether or not formally recognised",
+      "tags": [
+        "legal",
+        "formal"
+      ]
+    },
+    {
+      "word": "ex cathedra",
+      "def": "spoken with the full authority of one's office",
+      "tags": [
+        "religious",
+        "formal"
+      ]
+    },
+    {
+      "word": "casus belli",
+      "def": "an act or event used to justify a declaration of war",
+      "tags": [
+        "legal",
+        "military"
+      ]
+    },
+    {
+      "word": "primus inter pares",
+      "def": "first among equals; a nominal leader of formal peers",
+      "tags": [
+        "courtly",
+        "formal"
+      ]
+    },
+    {
+      "word": "odium theologicum",
+      "def": "the particular intensity of hatred found in theological dispute",
+      "tags": [
+        "religious",
+        "epithet"
+      ]
+    }
+  ]
+};
+
+Object.assign(DEFAULT_DATA, { race_vocab: RACE_VOCAB_DEFAULT, terrain_resources: TERRAIN_RESOURCES_DEFAULT, vocab_pool: VOCAB_POOL_DEFAULT });
+
+let data = JSON.parse(JSON.stringify(DEFAULT_DATA));
+let currentSection = 'prophecy_utterances';
+let editingId = null;
+let showExport = false;
+let isDirty = false;
+let vocabSearchQuery = '';
+
+const SECTIONS = [
+  {key:'prophecy_utterances',label:'Prophecy utterances',group:'Prophecy',type:'prophecy'},
+  {key:'food_plenty',label:'Food — plenty',group:'Observations',type:'simple'},
+  {key:'food_thin',label:'Food — thin',group:'Observations',type:'simple'},
+  {key:'food_scarce',label:'Food — scarce',group:'Observations',type:'simple'},
+  {key:'land_good',label:'Land — good',group:'Observations',type:'simple'},
+  {key:'land_depleted',label:'Land — depleted',group:'Observations',type:'simple'},
+  {key:'land_exhausted',label:'Land — exhausted',group:'Observations',type:'simple'},
+  {key:'war_present',label:'War — present',group:'Observations',type:'simple'},
+  {key:'food_adequate',label:'Food — adequate',group:'Observations',type:'simple'},
+  {key:'land_worn',label:'Land — worn',group:'Observations',type:'simple'},
+  {key:'war_absent',label:'War — absent',group:'Observations',type:'simple'},
+  {key:'migration_moderate',label:'Migration — moderate',group:'Observations',type:'simple'},
+  {key:'migration_stable',label:'Migration — stable',group:'Observations',type:'simple'},
+  {key:'trade_good',label:'Trade — good',group:'Observations',type:'simple'},
+  {key:'trade_poor',label:'Trade — poor',group:'Observations',type:'simple'},
+  {key:'religion_local',label:'Religion — local faith',group:'Observations',type:'simple'},
+  {key:'religion_foreign',label:'Religion — foreign faith',group:'Observations',type:'simple'},
+  {key:'migration_heavy',label:'Migration — heavy',group:'Observations',type:'simple'},
+  {key:'missives_pressure_plea',label:'Pressure plea',group:'Missives',type:'missive_sub',sub:'pressure_plea'},
+  {key:'missives_land_plea',label:'Land plea',group:'Missives',type:'missive_sub',sub:'land_plea'},
+  {key:'missives_schism_warning',label:'Schism warning',group:'Missives',type:'missive_sub',sub:'schism_warning'},
+  {key:'missives_military_threat',label:'Military threat',group:'Missives',type:'missive_sub',sub:'military_threat'},
+  {key:'missives_refugee_plea',label:'Refugee plea',group:'Missives',type:'missive_sub',sub:'refugee_plea'},
+  {key:'missives_conversion_report',label:'Conversion report',group:'Missives',type:'missive_sub',sub:'conversion_report'},
+  {key:'log_uprising',label:'Uprising',group:'Log Events',type:'log_sub',sub:'uprising'},
+  {key:'log_war_declared',label:'War declared',group:'Log Events',type:'log_sub',sub:'war_declared'},
+  {key:'log_war_victory',label:'War victory',group:'Log Events',type:'log_sub',sub:'war_victory'},
+  {key:'log_schism',label:'Schism',group:'Log Events',type:'log_sub',sub:'schism'},
+  {key:'log_nrm_emerged',label:'NRM emerged',group:'Log Events',type:'log_sub',sub:'nrm_emerged'},
+  {key:'log_land_stressed',label:'Land stressed',group:'Log Events',type:'log_sub',sub:'land_stressed'},
+  {key:'log_acts_of_god',label:'Acts of God',group:'Log Events',type:'log_sub',sub:'acts_of_god'},
+  {key:'creed_communal',label:'Communal',group:'Creed Articles',type:'creed_sub',sub:'communal'},
+  {key:'creed_hierarchical',label:'Hierarchical',group:'Creed Articles',type:'creed_sub',sub:'hierarchical'},
+  {key:'creed_evangelical',label:'Evangelical',group:'Creed Articles',type:'creed_sub',sub:'evangelical'},
+  {key:'creed_militant',label:'Militant',group:'Creed Articles',type:'creed_sub',sub:'militant'},
+  {key:'creed_restorative',label:'Restorative',group:'Creed Articles',type:'creed_sub',sub:'restorative'},
+  {key:'creed_quietist',label:'Quietist',group:'Creed Articles',type:'creed_sub',sub:'quietist'},
+  {key:'creed_apocalyptic',label:'Apocalyptic',group:'Creed Articles',type:'creed_sub',sub:'apocalyptic'},
+  {key:'creed_traditionalist',label:'Traditionalist',group:'Creed Articles',type:'creed_sub',sub:'traditionalist'},
+  // Race vocabulary sections
+  {key:'race_human_self',label:'Self-nouns',group:'Race — Human',type:'race_sub',race:'Human',sub:'self_nouns'},
+  {key:'race_human_outsider',label:'Outsider-nouns',group:'Race — Human',type:'race_sub',race:'Human',sub:'outsider_nouns'},
+  {key:'race_human_land',label:'Land metaphors',group:'Race — Human',type:'race_sub',race:'Human',sub:'land_metaphors'},
+  {key:'race_human_time',label:'Time metaphors',group:'Race — Human',type:'race_sub',race:'Human',sub:'time_metaphors'},
+  {key:'race_human_uncertainty',label:'Uncertainty phrases',group:'Race — Human',type:'race_sub',race:'Human',sub:'uncertainty_phrases'},
+  {key:'race_human_values',label:'Value words',group:'Race — Human',type:'race_sub',race:'Human',sub:'value_words'},
+  {key:'race_troll_self',label:'Self-nouns',group:'Race — Troll',type:'race_sub',race:'Troll',sub:'self_nouns'},
+  {key:'race_troll_outsider',label:'Outsider-nouns',group:'Race — Troll',type:'race_sub',race:'Troll',sub:'outsider_nouns'},
+  {key:'race_troll_land',label:'Land metaphors',group:'Race — Troll',type:'race_sub',race:'Troll',sub:'land_metaphors'},
+  {key:'race_troll_time',label:'Time metaphors',group:'Race — Troll',type:'race_sub',race:'Troll',sub:'time_metaphors'},
+  {key:'race_troll_uncertainty',label:'Uncertainty phrases',group:'Race — Troll',type:'race_sub',race:'Troll',sub:'uncertainty_phrases'},
+  {key:'race_troll_values',label:'Value words',group:'Race — Troll',type:'race_sub',race:'Troll',sub:'value_words'},
+  {key:'race_cyno_self',label:'Self-nouns',group:'Race — Cynocephalian',type:'race_sub',race:'Cynocephalian',sub:'self_nouns'},
+  {key:'race_cyno_outsider',label:'Outsider-nouns',group:'Race — Cynocephalian',type:'race_sub',race:'Cynocephalian',sub:'outsider_nouns'},
+  {key:'race_cyno_land',label:'Land metaphors',group:'Race — Cynocephalian',type:'race_sub',race:'Cynocephalian',sub:'land_metaphors'},
+  {key:'race_cyno_time',label:'Time metaphors',group:'Race — Cynocephalian',type:'race_sub',race:'Cynocephalian',sub:'time_metaphors'},
+  {key:'race_cyno_uncertainty',label:'Uncertainty phrases',group:'Race — Cynocephalian',type:'race_sub',race:'Cynocephalian',sub:'uncertainty_phrases'},
+  {key:'race_cyno_values',label:'Value words',group:'Race — Cynocephalian',type:'race_sub',race:'Cynocephalian',sub:'value_words'},
+  {key:'race_deodand_self',label:'Self-nouns',group:'Race — Deodand',type:'race_sub',race:'Deodand',sub:'self_nouns'},
+  {key:'race_deodand_outsider',label:'Outsider-nouns',group:'Race — Deodand',type:'race_sub',race:'Deodand',sub:'outsider_nouns'},
+  {key:'race_deodand_land',label:'Land metaphors',group:'Race — Deodand',type:'race_sub',race:'Deodand',sub:'land_metaphors'},
+  {key:'race_deodand_time',label:'Time metaphors',group:'Race — Deodand',type:'race_sub',race:'Deodand',sub:'time_metaphors'},
+  {key:'race_deodand_uncertainty',label:'Uncertainty phrases',group:'Race — Deodand',type:'race_sub',race:'Deodand',sub:'uncertainty_phrases'},
+  {key:'race_deodand_values',label:'Value words',group:'Race — Deodand',type:'race_sub',race:'Deodand',sub:'value_words'},
+  // Terrain resource sections
+  {key:'terrain_forest_goods',label:'Goods',group:'Terrain — Forest',type:'terrain_sub',terrain:'Forest',sub:'goods'},
+  {key:'terrain_forest_obs',label:'Observations',group:'Terrain — Forest',type:'terrain_sub',terrain:'Forest',sub:'observation_fragments'},
+  {key:'terrain_forest_trade',label:'Trade terms',group:'Terrain — Forest',type:'terrain_sub',terrain:'Forest',sub:'trade_terms'},
+  {key:'terrain_forest_scarce',label:'Scarcities',group:'Terrain — Forest',type:'terrain_sub',terrain:'Forest',sub:'scarcities'},
+  {key:'terrain_forest_vuln',label:'Vulnerabilities',group:'Terrain — Forest',type:'terrain_sub',terrain:'Forest',sub:'vulnerabilities'},
+  {key:'terrain_hills_goods',label:'Goods',group:'Terrain — Hills',type:'terrain_sub',terrain:'Hills',sub:'goods'},
+  {key:'terrain_hills_obs',label:'Observations',group:'Terrain — Hills',type:'terrain_sub',terrain:'Hills',sub:'observation_fragments'},
+  {key:'terrain_hills_trade',label:'Trade terms',group:'Terrain — Hills',type:'terrain_sub',terrain:'Hills',sub:'trade_terms'},
+  {key:'terrain_hills_scarce',label:'Scarcities',group:'Terrain — Hills',type:'terrain_sub',terrain:'Hills',sub:'scarcities'},
+  {key:'terrain_hills_vuln',label:'Vulnerabilities',group:'Terrain — Hills',type:'terrain_sub',terrain:'Hills',sub:'vulnerabilities'},
+  {key:'terrain_mountain_goods',label:'Goods',group:'Terrain — Mountain',type:'terrain_sub',terrain:'Mountain',sub:'goods'},
+  {key:'terrain_mountain_obs',label:'Observations',group:'Terrain — Mountain',type:'terrain_sub',terrain:'Mountain',sub:'observation_fragments'},
+  {key:'terrain_mountain_trade',label:'Trade terms',group:'Terrain — Mountain',type:'terrain_sub',terrain:'Mountain',sub:'trade_terms'},
+  {key:'terrain_mountain_scarce',label:'Scarcities',group:'Terrain — Mountain',type:'terrain_sub',terrain:'Mountain',sub:'scarcities'},
+  {key:'terrain_mountain_vuln',label:'Vulnerabilities',group:'Terrain — Mountain',type:'terrain_sub',terrain:'Mountain',sub:'vulnerabilities'},
+  {key:'terrain_tilled_goods',label:'Goods',group:'Terrain — Tilled',type:'terrain_sub',terrain:'Tilled',sub:'goods'},
+  {key:'terrain_tilled_obs',label:'Observations',group:'Terrain — Tilled',type:'terrain_sub',terrain:'Tilled',sub:'observation_fragments'},
+  {key:'terrain_tilled_trade',label:'Trade terms',group:'Terrain — Tilled',type:'terrain_sub',terrain:'Tilled',sub:'trade_terms'},
+  {key:'terrain_tilled_scarce',label:'Scarcities',group:'Terrain — Tilled',type:'terrain_sub',terrain:'Tilled',sub:'scarcities'},
+  {key:'terrain_tilled_vuln',label:'Vulnerabilities',group:'Terrain — Tilled',type:'terrain_sub',terrain:'Tilled',sub:'vulnerabilities'},
+  {key:'terrain_pasture_goods',label:'Goods',group:'Terrain — Pasture',type:'terrain_sub',terrain:'Pasture',sub:'goods'},
+  {key:'terrain_pasture_obs',label:'Observations',group:'Terrain — Pasture',type:'terrain_sub',terrain:'Pasture',sub:'observation_fragments'},
+  {key:'terrain_pasture_trade',label:'Trade terms',group:'Terrain — Pasture',type:'terrain_sub',terrain:'Pasture',sub:'trade_terms'},
+  {key:'terrain_pasture_scarce',label:'Scarcities',group:'Terrain — Pasture',type:'terrain_sub',terrain:'Pasture',sub:'scarcities'},
+  {key:'terrain_pasture_vuln',label:'Vulnerabilities',group:'Terrain — Pasture',type:'terrain_sub',terrain:'Pasture',sub:'vulnerabilities'},
+  {key:'terrain_coast_goods',label:'Goods',group:'Terrain — Coast',type:'terrain_sub',terrain:'Coast',sub:'goods'},
+  {key:'terrain_coast_obs',label:'Observations',group:'Terrain — Coast',type:'terrain_sub',terrain:'Coast',sub:'observation_fragments'},
+  {key:'terrain_coast_trade',label:'Trade terms',group:'Terrain — Coast',type:'terrain_sub',terrain:'Coast',sub:'trade_terms'},
+  {key:'terrain_coast_scarce',label:'Scarcities',group:'Terrain — Coast',type:'terrain_sub',terrain:'Coast',sub:'scarcities'},
+  {key:'terrain_coast_vuln',label:'Vulnerabilities',group:'Terrain — Coast',type:'terrain_sub',terrain:'Coast',sub:'vulnerabilities'},
+  // Vocabulary pool — browsable word banks with definitions, organised by part of speech
+  {key:'vocab_noun',label:'Nouns',group:'Vocabulary Pool',type:'vocab',pos:'noun'},
+  {key:'vocab_adjective',label:'Adjectives',group:'Vocabulary Pool',type:'vocab',pos:'adjective'},
+  {key:'vocab_verb',label:'Verbs',group:'Vocabulary Pool',type:'vocab',pos:'verb'},
+  {key:'vocab_phrase',label:'Phrases & epithets',group:'Vocabulary Pool',type:'vocab',pos:'phrase'}
+
+];
+
+// ─────────────────────────────────────────────
+// VARIABLE / PLACEHOLDER SUPPORT
+//
+// Each section that the game substitutes at runtime gets a fixed list of
+// {token} variables, matching exactly what the consuming GDScript function
+// replaces. These are NOT arbitrary — they mirror real .replace() calls in
+// main_fixed.gd / narrative_generator.gd. Sections with no entry here (or
+// an empty array) are used verbatim with no substitution, so no chips show.
+//
+// log_uprising, log_schism, and log_land_stressed are wired with placeholder
+// sets matching their target functions (prose_uprising, prose_schism,
+// prose_land_stress) but are NOT YET connected on the Godot side.
+// log_acts_of_god has no placeholders here on purpose: that event has four
+// separate sub-pools in-game (plague/famine/flood/upheaval), so a single
+// flat list can't represent it correctly.
+// ─────────────────────────────────────────────
+const PLACEHOLDERS = {
+  missives_pressure_plea:    ['gov_name','rel_name','terrain','adj','people'],
+  missives_land_plea:        ['gov_name','rel_name','terrain','adj','people'],
+  missives_schism_warning:   ['gov_name','rel_name','terrain','adj','people'],
+  missives_military_threat:  ['gov_name','rel_name','terrain','adj','people'],
+  missives_refugee_plea:     ['gov_name','rel_name','terrain','adj','people'],
+  missives_conversion_report:['gov_name','rel_name','terrain','adj','people'],
+  log_war_declared:  ['hedge','aggressor','defender','verb','place','adj','connective'],
+  log_war_victory:   ['hedge','winner','loser','seasons','place','connective','verb'],
+  log_nrm_emerged:   ['hedge','new_faith','parent_a','parent_b','place','connective'],
+  log_uprising:      ['hedge','people','place','gov_name','authority','connective','adj'],
+  log_schism:        ['hedge','clergy','gov_name','verb','old_faith','new_faith','connective','adj'],
+  log_land_stressed: ['hedge','place','gov_name','verb','severity','connective']
+};
+
+const SAMPLE_VALUES = {
+  gov_name:'the Marrowfen Commonwealth', rel_name:'the Reconciled Brotherhood',
+  terrain:'pasture', adj:'troubled', people:'the common faithful',
+  hedge:'It is said that', connective:'And so',
+  aggressor:'the Verlanth Dominion', defender:'the Aubrey Compact',
+  winner:'the Verlanth Dominion', loser:'the Aubrey Compact',
+  seasons:'7', verb:'laid waste to', place:'the forest margin',
+  new_faith:'the Lantern Creed', parent_a:'the Reconciled Brotherhood',
+  parent_b:'the Quiet Order', authority:'the ruling council',
+  old_faith:'the Old Rite', clergy:'the ordained', severity:'depleted'
+};
+
+function substituteSample(text, tokens) {
+  let out = text || '';
+  tokens.forEach(t => { out = out.split('{'+t+'}').join(SAMPLE_VALUES[t] || ('{'+t+'}')); });
+  return out;
+}
+function insertPlaceholder(i, token) {
+  const ta = document.getElementById('simple-ta-'+i);
+  if (!ta) return;
+  const start = ta.selectionStart, end = ta.selectionEnd;
+  const ins = '{'+token+'}';
+  ta.value = ta.value.slice(0,start) + ins + ta.value.slice(end);
+  ta.selectionStart = ta.selectionEnd = start + ins.length;
+  ta.focus();
+  setSimple(i, ta.value);
+  refreshSamplePreview(i);
+}
+function refreshSamplePreview(i) {
+  const el = document.getElementById('sample-preview-'+i);
+  const ta = document.getElementById('simple-ta-'+i);
+  if (!el || !ta) return;
+  const tokens = PLACEHOLDERS[currentSection] || [];
+  el.textContent = substituteSample(ta.value, tokens);
+}
+
+function getItems(key) {
+  const sec = SECTIONS.find(s=>s.key===key);
+  if (!sec) return [];
+  if (sec.type==='prophecy') return data.prophecy_utterances;
+  if (sec.type==='simple') return data[key]||[];
+  if (sec.type==='missive_sub') return (data.missives||{})[sec.sub]||[];
+  if (sec.type==='log_sub') return (data.log_events||{})[sec.sub]||[];
+  if (sec.type==='creed_sub') return (data.creed_articles||{})[sec.sub]||[];
+  if (sec.type==='race_sub') {
+    if (!data.race_vocab) data.race_vocab = JSON.parse(JSON.stringify(RACE_VOCAB_DEFAULT));
+    return ((data.race_vocab||{})[sec.race]||{})[sec.sub]||[];
+  }
+  if (sec.type==='terrain_sub') {
+    if (!data.terrain_resources) data.terrain_resources = JSON.parse(JSON.stringify(TERRAIN_RESOURCES_DEFAULT));
+    return ((data.terrain_resources||{})[sec.terrain]||{})[sec.sub]||[];
+  }
+  if (sec.type==='vocab') {
+    if (!data.vocab_pool) data.vocab_pool = JSON.parse(JSON.stringify(VOCAB_POOL_DEFAULT));
+    return (data.vocab_pool||{})[sec.pos]||[];
+  }
+  return [];
+}
+function setItems(key, arr) {
+  const sec = SECTIONS.find(s=>s.key===key);
+  if (!sec) return;
+  if (sec.type==='simple') { data[key]=arr; return; }
+  if (sec.type==='missive_sub') { data.missives[sec.sub]=arr; return; }
+  if (sec.type==='log_sub') { data.log_events[sec.sub]=arr; return; }
+  if (sec.type==='creed_sub') { data.creed_articles[sec.sub]=arr; return; }
+  if (sec.type==='race_sub') {
+    if (!data.race_vocab) data.race_vocab = JSON.parse(JSON.stringify(RACE_VOCAB_DEFAULT));
+    if (!data.race_vocab[sec.race]) data.race_vocab[sec.race]={};
+    data.race_vocab[sec.race][sec.sub]=arr; return;
+  }
+  if (sec.type==='terrain_sub') {
+    if (!data.terrain_resources) data.terrain_resources = JSON.parse(JSON.stringify(TERRAIN_RESOURCES_DEFAULT));
+    if (!data.terrain_resources[sec.terrain]) data.terrain_resources[sec.terrain]={};
+    data.terrain_resources[sec.terrain][sec.sub]=arr; return;
+  }
+  if (sec.type==='vocab') {
+    if (!data.vocab_pool) data.vocab_pool = JSON.parse(JSON.stringify(VOCAB_POOL_DEFAULT));
+    data.vocab_pool[sec.pos]=arr; return;
+  }
+}
+function currentType() {
+  const sec = SECTIONS.find(s=>s.key===currentSection);
+  if (!sec) return 'simple';
+  if (sec.type==='race_sub' || sec.type==='terrain_sub') return 'simple';
+  return sec.type||'simple';
+}
+
+function pick(arr) { if(!arr||!arr.length) return ''; return arr[Math.floor(Math.random()*arr.length)]; }
+function markDirty() { isDirty=true; document.getElementById('save-badge').textContent='unsaved'; document.getElementById('save-badge').className='save-badge'; }
+function markSaved() { isDirty=false; document.getElementById('save-badge').textContent='saved'; document.getElementById('save-badge').className='save-badge saved'; }
+
+function notify(msg) {
+  const n=document.getElementById('notif');
+  n.textContent=msg; n.className='notif show';
+  setTimeout(()=>n.className='notif',2000);
+}
+
+function saveAll() {
+  try {
+    localStorage.setItem('vicechair_prose_v2', JSON.stringify(data));
+    markSaved();
+    notify('Saved to browser storage');
+  } catch(e) { notify('Save failed: '+e.message); }
+}
+
+function loadSaved() {
+  try {
+    const raw = localStorage.getItem('vicechair_prose_v2');
+    if (raw) { data = JSON.parse(raw); markSaved(); return true; }
+  } catch(e) {}
+  return false;
+}
+
+function resetToDefaults() {
+  if (!confirm('Reset all entries to defaults? This will overwrite your edits.')) return;
+  data = JSON.parse(JSON.stringify(DEFAULT_DATA));
+  markDirty(); renderAll(); notify('Reset to defaults');
+}
+
+function exportJSON() {
+  const blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'vicechair_prose.json';
+  a.click();
+  notify('JSON exported');
+}
+
+function loadFromFile() { document.getElementById('file-input').click(); }
+function handleFileImport(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      data = JSON.parse(ev.target.result);
+      markDirty(); renderAll(); notify('Imported: '+file.name);
+    } catch(err) { notify('Import failed: '+err.message); }
+  };
+  reader.readAsText(file);
+  e.target.value='';
+}
+
+
+
+function renderAll() { renderSidebar(); renderEditor(); refreshPreview(); }
+
+let collapsedGroups = {};
+
+function renderSidebar() {
+  const sb = document.getElementById('sidebar');
+  let groups = {};
+  SECTIONS.forEach(s => {
+    if (!groups[s.group]) groups[s.group]=[];
+    groups[s.group].push(s);
+  });
+  let html='';
+  for (const [g,items] of Object.entries(groups)) {
+    // Default Race/Terrain groups to collapsed the first time they're seen —
+    // there are dozens of these and they'd otherwise dominate the sidebar.
+    if (!(g in collapsedGroups)) {
+      collapsedGroups[g] = g.startsWith('Race —') || g.startsWith('Terrain —');
+    }
+    const isCollapsed = collapsedGroups[g];
+    const gid = 'grp-'+g.replace(/[^a-zA-Z0-9]/g,'_');
+    html+=`<div class="nav-group ${isCollapsed?'collapsed':''}" onclick="toggleGroup('${g.replace(/'/g,"\\'")}')">
+      <span>${g}</span><span class="nav-caret">▾</span>
+    </div>`;
+    html+=`<div class="nav-group-body ${isCollapsed?'collapsed':''}" id="${gid}">`;
+    items.forEach(s=>{
+      const arr=getItems(s.key);
+      const count=Array.isArray(arr)?arr.length:0;
+      html+=`<div class="nav-item ${currentSection===s.key?'active':''}" onclick="switchSection('${s.key}')">
+        <span>${s.label}</span><span class="nav-count">${count}</span>
+      </div>`;
+    });
+    html+=`</div>`;
+  }
+  sb.innerHTML=html;
+}
+function toggleGroup(g) {
+  collapsedGroups[g] = !collapsedGroups[g];
+  renderSidebar();
+}
+
+function switchSection(key) {
+  currentSection=key; editingId=null; showExport=false; vocabSearchQuery='';
+  const sec = SECTIONS.find(s=>s.key===key);
+  if (sec) collapsedGroups[sec.group] = false;
+  renderSidebar(); renderEditor(); refreshPreview();
+}
+
+function renderEditor() {
+  const ed=document.getElementById('editor');
+  const sec=SECTIONS.find(s=>s.key===currentSection);
+  const items=getItems(currentSection);
+  const type=currentType();
+
+  let html=`<div class="ed-header"><h2>${sec.label}</h2><p>${items.length} entries · click any entry to edit</p></div>`;
+
+  if (type==='prophecy') {
+    items.forEach(item=>{
+      const isOpen=editingId===item.id;
+      html+=`<div class="entry-card ${isOpen?'open':''}" id="card-${item.id}">
+        <div class="entry-row" onclick="toggleEdit('${item.id}')">
+          <span class="entry-idx">${item.id}</span>
+          <span class="entry-txt">${item.base||'<empty>'}</span>
+          <button class="del-btn" onclick="deleteProphecy(event,'${item.id}')">✕</button>
+        </div>
+        ${isOpen?buildProphecyForm(item):''}
+      </div>`;
+    });
+    html+=`<div class="add-row" onclick="addProphecy()">+ Add utterance</div>`;
+  } else if (type==='vocab') {
+    const q = vocabSearchQuery;
+    const filtered = items.map((it,i)=>({it,i})).filter(({it})=>{
+      if (!q) return true;
+      const word=(it.word||'').toLowerCase(), def=(it.def||'').toLowerCase();
+      const tagsMatch=(it.tags||[]).some(t=>t.toLowerCase().includes(q));
+      return word.includes(q) || def.includes(q) || tagsMatch;
+    });
+    html = `<div class="ed-header"><h2>${sec.label}</h2><p>${items.length} entries · ${filtered.length} shown · click any entry to edit</p></div>`;
+    html += `<input class="vocab-search" type="text" placeholder="Search word, definition, or tag…" value="${vocabSearchQuery.replace(/"/g,'&quot;')}" oninput="setVocabSearch(this.value)">`;
+    filtered.forEach(({it,i})=>{
+      const isOpen=editingId===String(i);
+      const tagsHtml=(it.tags||[]).map(t=>`<span class="vocab-tag-pill ${VOCAB_ROUTING_TAGS.includes(t)?'routing':''}">${t}</span>`).join('');
+      html+=`<div class="entry-card ${isOpen?'open':''}" id="card-${i}">
+        <div class="vocab-row" onclick="toggleEdit('${i}')">
+          <span class="vocab-word">${it.word||'<empty>'}</span>
+          <span class="vocab-def-preview">${it.def||''}</span>
+          <button class="del-btn" onclick="deleteVocab(event,${i})">✕</button>
+        </div>
+        <div>${tagsHtml}</div>
+        ${isOpen?buildVocabForm(it,i):''}
+      </div>`;
+    });
+    html+=`<div class="add-row" onclick="addVocab()">+ Add word</div>`;
+  } else {
+    items.forEach((text,i)=>{
+      const isOpen=editingId===String(i);
+      html+=`<div class="entry-card ${isOpen?'open':''}" id="card-${i}">
+        <div class="entry-row" onclick="toggleEdit('${i}')">
+          <span class="entry-idx">#${i+1}</span>
+          <span class="entry-txt ${!text?'empty':''}">${text||'<empty>'}</span>
+          <button class="del-btn" onclick="deleteSimple(event,${i})">✕</button>
+        </div>
+        ${isOpen?buildSimpleForm(text,i):''}
+      </div>`;
+    });
+    html+=`<div class="add-row" onclick="addSimple()">+ Add entry</div>`;
+  }
+  ed.innerHTML=html;
+}
+
+function buildProphecyForm(item) {
+  const condHtml=CONDITIONS.map(c=>
+    `<span class="tag ${item.conditions.includes(c)?'on':''}" onclick="toggleCond('${item.id}','${c}')">${c.replace(/_/g,' ')}</span>`
+  ).join('');
+  const toneHtml=TONE_TAGS.map(t=>
+    `<span class="tag ${item.tone.includes(t)?'on-red':''}" onclick="toggleToneTag('${item.id}','${t}')">${t.replace(/_/g,' ')}</span>`
+  ).join('');
+  const clusterOpts=CLUSTERS.map(c=>`<option value="${c}" ${item.cluster===c?'selected':''}>${c}</option>`).join('');
+  return `<div class="edit-body open">
+    <div class="fl">Base text</div>
+    <textarea rows="3" oninput="setPropField('${item.id}','base',this.value)">${item.base}</textarea>
+    <div class="fl">Cluster</div>
+    <select onchange="setPropField('${item.id}','cluster',this.value)">${clusterOpts}</select>
+    <div class="fl">Conditions (up to 3 fulfil this line)</div>
+    <div class="tag-row">${condHtml}</div>
+    <div class="fl">Tone tags</div>
+    <div class="tag-row">${toneHtml}</div>
+    <div class="fl">Martial reskin</div>
+    <textarea rows="2" oninput="setReskin('${item.id}','Martial',this.value)">${item.reskins.Martial||''}</textarea>
+    <div class="fl">Restorative reskin</div>
+    <textarea rows="2" oninput="setReskin('${item.id}','Restorative',this.value)">${item.reskins.Restorative||''}</textarea>
+    <div class="fl">Monastic reskin</div>
+    <textarea rows="2" oninput="setReskin('${item.id}','Monastic',this.value)">${item.reskins.Monastic||''}</textarea>
+    <div class="fl">Evangelical reskin</div>
+    <textarea rows="2" oninput="setReskin('${item.id}','Evangelical',this.value)">${item.reskins.Evangelical||''}</textarea>
+    <div class="form-btns">
+      <button class="btn btn-gold" onclick="saveAndClose()">Done</button>
+      <button class="btn" onclick="closeEdit()">Close</button>
+    </div>
+  </div>`;
+}
+
+function buildSimpleForm(text,i) {
+  const tokens = PLACEHOLDERS[currentSection] || [];
+  const chips = tokens.length
+    ? `<div class="fl">Insert variable</div>
+       <div class="var-hint">Click to insert at cursor. These match what the game actually substitutes — don't invent new ones.</div>
+       <div class="tag-row">${tokens.map(t=>`<span class="tag" onclick="insertPlaceholder(${i},'${t}')">{${t}}</span>`).join('')}</div>`
+    : '';
+  const preview = tokens.length
+    ? `<div class="fl">Preview with sample values</div>
+       <div class="sample-preview" id="sample-preview-${i}">${substituteSample(text, tokens)}</div>`
+    : '';
+  return `<div class="edit-body open">
+    <div class="fl">Text</div>
+    <textarea id="simple-ta-${i}" rows="3" oninput="setSimple(${i},this.value);refreshSamplePreview(${i})">${text}</textarea>
+    ${chips}
+    ${preview}
+    <div class="form-btns">
+      <button class="btn btn-gold" onclick="saveAndClose()">Done</button>
+      <button class="btn" onclick="closeEdit()">Close</button>
+    </div>
+  </div>`;
+}
+
+function toggleEdit(id) {
+  editingId=editingId===String(id)?null:String(id);
+  renderEditor();
+}
+function closeEdit() { editingId=null; renderEditor(); }
+function saveAndClose() { saveAll(); closeEdit(); refreshPreview(); }
+
+function setPropField(id,field,val) {
+  const item=data.prophecy_utterances.find(u=>u.id===id);
+  if(item){item[field]=val;markDirty();}
+}
+function setReskin(id,flav,val) {
+  const item=data.prophecy_utterances.find(u=>u.id===id);
+  if(item){item.reskins[flav]=val;markDirty();}
+}
+function toggleCond(id,cond) {
+  const item=data.prophecy_utterances.find(u=>u.id===id);
+  if(!item)return;
+  const idx=item.conditions.indexOf(cond);
+  if(idx>=0)item.conditions.splice(idx,1);
+  else if(item.conditions.length<3)item.conditions.push(cond);
+  markDirty(); renderEditor();
+}
+function toggleToneTag(id,tone) {
+  const item=data.prophecy_utterances.find(u=>u.id===id);
+  if(!item)return;
+  const idx=item.tone.indexOf(tone);
+  if(idx>=0)item.tone.splice(idx,1);
+  else item.tone.push(tone);
+  markDirty(); renderEditor();
+}
+function setSimple(i,val) {
+  const items=getItems(currentSection);
+  items[i]=val;
+  setItems(currentSection,items);
+  markDirty();
+}
+function deleteProphecy(e,id) {
+  e.stopPropagation();
+  if(!confirm('Remove this utterance?'))return;
+  data.prophecy_utterances=data.prophecy_utterances.filter(u=>u.id!==id);
+  editingId=null; markDirty(); renderAll();
+}
+function deleteSimple(e,i) {
+  e.stopPropagation();
+  if(!confirm('Remove this entry?'))return;
+  const items=getItems(currentSection);
+  items.splice(i,1);
+  setItems(currentSection,items);
+  editingId=null; markDirty(); renderAll();
+}
+function addProphecy() {
+  const id='NEW-'+Date.now();
+  data.prophecy_utterances.push({id,cluster:'water',base:'',conditions:[],tone:[],reskins:{Martial:'',Restorative:'',Monastic:'',Evangelical:''}});
+  editingId=id; markDirty(); renderEditor();
+  setTimeout(()=>document.getElementById('card-'+id)?.scrollIntoView({behavior:'smooth'}),50);
+}
+function addSimple() {
+  const items=getItems(currentSection);
+  items.push('');
+  setItems(currentSection,items);
+  editingId=String(items.length-1);
+  markDirty(); renderEditor();
+  setTimeout(()=>document.getElementById('card-'+(items.length-1))?.scrollIntoView({behavior:'smooth'}),50);
+}
+
+const VOCAB_TAG_OPTIONS = ['archaic','formal','technical','religious','military','nautical',
+  'anatomical','architecture','music','economics','biology','rare','philosophy','legal',
+  'courtly','art','medical','heraldic','epithet','moral',
+  // Routing tags — these are what main_fixed.gd / narrative_generator.gd actually filters on
+  // to pull words into specific in-game pick() pools. See VOCAB_ROUTING_TAGS below.
+  'doom','hope','sacred','mundane','people_base','people_clergy','people_martial','people_noble'];
+
+// Routing tags rendered in a visually separate row in the word-edit form, since they
+// drive actual generation behaviour rather than just describing register/theme.
+const VOCAB_ROUTING_TAGS = ['doom','hope','sacred','mundane','people_base','people_clergy','people_martial','people_noble'];
+const VOCAB_REGISTER_TAGS = VOCAB_TAG_OPTIONS.filter(t => !VOCAB_ROUTING_TAGS.includes(t));
+
+function buildVocabForm(item,i) {
+  const registerHtml = VOCAB_REGISTER_TAGS.map(t=>
+    `<span class="tag ${(item.tags||[]).includes(t)?'on':''}" onclick="toggleVocabTag(${i},'${t}')">${t}</span>`
+  ).join('');
+  const routingHtml = VOCAB_ROUTING_TAGS.map(t=>
+    `<span class="tag ${(item.tags||[]).includes(t)?'on-red':''}" onclick="toggleVocabTag(${i},'${t}')">${t}</span>`
+  ).join('');
+  return `<div class="edit-body open">
+    <div class="fl">Word</div>
+    <textarea rows="1" oninput="setVocabField(${i},'word',this.value)">${item.word||''}</textarea>
+    <div class="fl">Definition</div>
+    <textarea rows="2" oninput="setVocabField(${i},'def',this.value)">${item.def||''}</textarea>
+    <div class="fl">Tags — register / theme (reference only)</div>
+    <div class="tag-row">${registerHtml}</div>
+    <div class="fl">Routing tags — pulls this word into a live game pick pool</div>
+    <div class="var-hint">Adjectives tagged doom/hope/sacred/mundane extend the matching ADJECTIVES_* bank. Nouns tagged people_base/clergy/martial/noble extend the matching NOUNS_PEOPLE_* bank (used as "the {word}"). Leave untagged for reference-only words.</div>
+    <div class="tag-row">${routingHtml}</div>
+    <div class="form-btns">
+      <button class="btn btn-gold" onclick="saveAndClose()">Done</button>
+      <button class="btn" onclick="closeEdit()">Close</button>
+    </div>
+  </div>`;
+}
+function setVocabField(i,field,val) {
+  const items=getItems(currentSection);
+  if (!items[i]) return;
+  items[i][field]=val;
+  setItems(currentSection,items);
+  markDirty();
+}
+function toggleVocabTag(i,tag) {
+  const items=getItems(currentSection);
+  if (!items[i]) return;
+  if (!items[i].tags) items[i].tags=[];
+  const idx=items[i].tags.indexOf(tag);
+  if (idx>=0) items[i].tags.splice(idx,1); else items[i].tags.push(tag);
+  setItems(currentSection,items);
+  markDirty(); renderEditor();
+}
+function deleteVocab(e,i) {
+  e.stopPropagation();
+  if (!confirm('Remove this word?')) return;
+  const items=getItems(currentSection);
+  items.splice(i,1);
+  setItems(currentSection,items);
+  editingId=null; markDirty(); renderAll();
+}
+function addVocab() {
+  const items=getItems(currentSection);
+  items.push({word:'',def:'',tags:[]});
+  setItems(currentSection,items);
+  editingId=String(items.length-1);
+  markDirty(); renderEditor();
+  setTimeout(()=>document.getElementById('card-'+(items.length-1))?.scrollIntoView({behavior:'smooth'}),50);
+}
+function setVocabSearch(val) {
+  vocabSearchQuery = val.toLowerCase();
+  renderEditor();
+}
+
+function refreshPreview() {
+  const pv=document.getElementById('preview');
+  const type=currentType();
+  let html=`<div class="pv-header"><h3>Preview</h3><button class="btn" onclick="isMobile()?rollAndShow():refreshPreview()">Roll</button></div>`;
+
+  if(type==='prophecy') html+=prophecyPreview();
+  else html+=observationPreview();
+
+  html+=statsBlock();
+  html+=exportBlock();
+  pv.innerHTML=html;
+}
+
+function prophecyPreview() {
+  const items=data.prophecy_utterances;
+  if(items.length<4) return `<div class="pv-box" style="color:#333;">Need 4+ utterances.</div>`;
+  const flavs=['base','Martial','Restorative','Monastic','Evangelical'];
+  const flav=pick(flavs);
+  const isDoom=Math.random()>0.4;
+  const rel=pick(['Order of the Turning','Compact of the Remnant','College of the Hidden Fire','Fellowship of the Balance']);
+  const occ=pick(['bone-reader','hedge-astrologer','shrine-keeper','anchorite','student of omens','march warden','river witness','memory-keeper']);
+  const preamble=pick(isDoom?P_PREAMBLES_DOOM:P_PREAMBLES_HOPE).replace(/{occ}/g,occ).replace(/{rel}/g,rel);
+  const closing=pick(isDoom?P_CLOSINGS_DOOM:P_CLOSINGS_HOPE);
+  const shuffled=[...items].sort(()=>Math.random()-.5);
+  const sel=[];const usedClusters=[];
+  for(const item of shuffled){
+    if(sel.length>=4)break;
+    if(!usedClusters.includes(item.cluster)||sel.length>=3){sel.push(item);if(!usedClusters.includes(item.cluster))usedClusters.push(item.cluster);}
+  }
+  while(sel.length<4&&shuffled.length>=4){const e=shuffled.find(i=>!sel.includes(i));if(e)sel.push(e);else break;}
+  const linesHtml=sel.map(item=>{
+    const txt=(flav!=='base'&&item.reskins[flav])?item.reskins[flav]:item.base;
+    const green=Math.random()>.55;
+    const tones=item.tone.map(t=>`<span class="tone-pill ${t.startsWith('doom')?'tone-doom':'tone-hope'}">${t.replace(/_/g,' ')}</span>`).join('');
+    return `<div class="pline ${green?'green':'red'}">${txt}<div style="margin-top:2px;">${tones}</div></div>`;
+  }).join('');
+  return `<div style="margin-bottom:6px;font-size:11px;color:#555;">
+    Flavour: <strong style="color:#c8b97a;">${flav}</strong> · ${isDoom?'<span style="color:#c87a5a;">Doom</span>':'<span style="color:#7ab87a;">Promise</span>'} · ${rel}
+  </div>
+  <div class="pv-box">
+    <div class="preamble">${preamble}</div>
+    ${linesHtml}
+    <div class="closing">${closing}</div>
+  </div>
+  <p style="font-size:11px;color:#444;margin-bottom:10px;">Colours are randomised for preview.</p>`;
+}
+
+function observationPreview() {
+  const sec = SECTIONS.find(s=>s.key===currentSection);
+  const type = sec ? sec.type : 'simple';
+  const items=getItems(currentSection);
+  if(!items.length) return `<div class="pv-box" style="color:#333;">No entries yet.</div>`;
+
+  if(type==='vocab') {
+    const w1=pick(items), w2=items.length>1?pick(items.filter(i=>i!==w1)):null;
+    const card=(w)=>`<div style="margin-bottom:8px;"><span style="color:#c8b97a;font-weight:600;">${w.word||'<empty>'}</span>
+      <div style="color:#8a8576;margin-top:2px;">${w.def||''}</div>
+      <div style="margin-top:3px;">${(w.tags||[]).map(t=>`<span class="vocab-tag-pill ${VOCAB_ROUTING_TAGS.includes(t)?'routing':''}">${t}</span>`).join('')}</div></div>`;
+    return `<div class="pv-box">${card(w1)}${w2?card(w2):''}</div>
+      <p style="font-size:11px;color:#444;margin-bottom:10px;">A vocabulary pool — not used directly by the game. Pull words from here while writing other sections.</p>`;
+  }
+
+  if(type==='race_sub') {
+    const s1=pick(items);
+    const s2=items.length>1?pick(items.filter(i=>i!==s1)):null;
+    return `<div class="pv-box">
+      <div style="font-size:10px;color:#666;margin-bottom:8px;font-style:normal;letter-spacing:.08em;">${sec.race.toUpperCase()} — ${sec.sub.replace(/_/g,' ')}</div>
+      <div style="margin-bottom:8px;">${s1}</div>
+      ${s2?`<div style="color:#888;">${s2}</div>`:''}
+    </div><p style="font-size:11px;color:#444;margin-bottom:10px;">Feeds into race-specific narrator passages and missive voices.</p>`;
+  }
+
+  if(type==='terrain_sub') {
+    const s1=pick(items);
+    const s2=items.length>1?pick(items.filter(i=>i!==s1)):null;
+    return `<div class="pv-box">
+      <div style="font-size:10px;color:#666;margin-bottom:8px;font-style:normal;letter-spacing:.08em;">${sec.terrain.toUpperCase()} — ${sec.sub.replace(/_/g,' ')}</div>
+      <div style="margin-bottom:8px;">${s1}</div>
+      ${s2?`<div style="color:#888;">${s2}</div>`:''}
+    </div><p style="font-size:11px;color:#444;margin-bottom:10px;">Feeds into trade missives, caravan events, and economic observations.</p>`;
+  }
+
+  if(type==='missive_sub') {
+    const text=pick(items);
+    const names=['Corvane of the eastern hills','the keeper at Thornwald','a shrine-sister of the southern route','the hall witness at Redmere','a factor of long acquaintance'];
+    const sender=pick(names);
+    const subs=['A matter requiring your attention','I write on behalf of those here','Concerning the present situation','For your consideration','I would not write if it were not necessary'];
+    return `<div class="pv-box">
+      <div style="font-size:11px;color:#555;margin-bottom:8px;font-style:normal;">From: ${sender}</div>
+      <div style="font-size:11px;color:#666;margin-bottom:10px;font-style:normal;">${pick(subs)}</div>
+      ${text}
+    </div>`;
+  }
+  if(type==='log_sub') {
+    let text=pick(items);
+    text=text.replace(/{aggressor}/g,'the realm of Corvane').replace(/{defender}/g,'the Thornwald commonwealth').replace(/{winner}/g,'the realm of Corvane').replace(/{loser}/g,'the Thornwald commonwealth').replace(/{seasons}/g,'10').replace(/{nrm_name}/g,'Sovo Ge').replace(/{parent_a}/g,'Order of the Turning').replace(/{parent_b}/g,'Compact of the Remnant').replace(/{terrain}/g,'Forest');
+    return `<div class="pv-box" style="font-style:normal;font-size:13px;color:#b0a880;">
+      <div style="font-size:10px;color:#555;margin-bottom:8px;letter-spacing:.08em;">SEASON ${Math.floor(Math.random()*150)+20} — ${SECTIONS.find(s=>s.key===currentSection)?.label?.toUpperCase()}</div>
+      ${text}
+    </div>`;
+  }
+  if(type==='creed_sub') {
+    const text=pick(items);
+    const sub=SECTIONS.find(s=>s.key===currentSection)?.sub||'';
+    return `<div class="pv-box">
+      <div style="font-size:10px;color:#777;margin-bottom:8px;font-style:normal;letter-spacing:.06em;">${sub.toUpperCase()} · ARTICLE ${Math.floor(Math.random()*4)+1}</div>
+      ${text}
+    </div>`;
+  }
+  const narratorType=pick(NARRATOR_TYPES);
+  const occ=pick(OCCUPATIONS[narratorType]);
+  const terrain=pick(TERRAINS);
+  const place=pick(TERRAIN_PLACES[terrain]);
+  const opening=pick(SEASONAL_OPENINGS);
+  const obs1=pick(items);
+  const rest=items.filter(i=>i!==obs1);
+  const obs2=rest.length?pick(rest):null;
+  const rest2=(rest.filter(i=>i!==obs2));
+  const obs3=rest2.length?pick(rest2):null;
+  const rumour=pick(RUMOUR_OPENERS);
+  const closing=pick(NAR_CLOSINGS);
+  const lc=s=>s?s.charAt(0).toLowerCase()+s.slice(1):s;
+  let passage=`${opening} The talk of ${place} runs to ${lc(obs1)}`;
+  if(!passage.endsWith('.'))passage+='.';
+  if(obs2){passage+=` ${obs2}`;if(!passage.endsWith('.'))passage+='.';}
+  if(obs3){passage+=` ${rumour}${lc(obs3)}`;if(!passage.endsWith('.'))passage+='.';}
+  passage+=` ${closing}`;
+  return `<div class="pv-box">${passage}<div class="byline">— ${occ}, ${place}</div></div>`;
+}
+
+function statsBlock() {
+  const items=getItems(currentSection);
+  const count=Array.isArray(items)?items.length:0;
+  let html=`<div class="section-stats"><div class="stat-row"><span>Entries</span><span>${count}</span></div>`;
+  if(currentType()==='prophecy'){
+    const clusters={};
+    items.forEach(i=>{clusters[i.cluster]=(clusters[i.cluster]||0)+1;});
+    Object.entries(clusters).forEach(([c,n])=>{
+      html+=`<div class="stat-row"><span>${c}</span><span>${n}</span></div>`;
+    });
+  }
+  html+=`</div>`;
+  return html;
+}
+
+function exportBlock() {
+  return `<div>
+    <button class="btn btn-gold" style="width:100%;margin-bottom:6px;" onclick="toggleExport()">
+      ${showExport?'Hide':'Show'} GDScript export
+    </button>
+    <div class="export-area ${showExport?'open':''}" id="export-area">${showExport?generateExport():''}</div>
+    ${showExport?`<button class="btn" style="width:100%;margin-top:4px;" onclick="copyExport()">Copy to clipboard</button>`:''}
+  </div>`;
+}
+
+function toggleExport() { showExport=!showExport; refreshPreview(); }
+
+function generateExport() {
+  const sec = SECTIONS.find(s=>s.key===currentSection);
+  if (!sec) return '';
+  const type = sec.type;
+
+  if (type==='prophecy') {
+    let out='const PROPHECY_UTTERANCES = {\n';
+    data.prophecy_utterances.forEach(item=>{
+      const b=(item.base||'').replace(/\\/g,'\\\\').replace(/"/g,'\\"');
+      out+=`\t"${item.id}": {\n`;
+      out+=`\t\t"base": "${b}",\n`;
+      out+=`\t\t"conditions": [${item.conditions.map(c=>`"${c}"`).join(', ')}],\n`;
+      out+=`\t\t"tone": [${item.tone.map(t=>`"${t}"`).join(', ')}],\n`;
+      out+=`\t\t"cluster": "${item.cluster}",\n`;
+      out+=`\t\t"reskins": {\n`;
+      ['Martial','Restorative','Monastic','Evangelical'].forEach((f,i,a)=>{
+        const v=(item.reskins[f]||'').replace(/\\/g,'\\\\').replace(/"/g,'\\"');
+        out+=`\t\t\t"${f}": "${v}"${i<a.length-1?',':''}\n`;
+      });
+      out+=`\t\t}\n\t},\n`;
+    });
+    return out+'}';
+  }
+
+  const items = getItems(currentSection);
+  const esc = s => (s||'').replace(/\\/g,'\\\\').replace(/"/g,'\\"');
+
+  if (type==='race_sub') {
+    const name = `RACE_VOCAB_${sec.race.toUpperCase()}_${sec.sub.toUpperCase()}`;
+    let out=`# ${sec.race} — ${sec.sub}\nconst ${name} = [\n`;
+    items.forEach(i=>{out+=`\t"${esc(i)}",\n`;});
+    return out+']';
+  }
+  if (type==='terrain_sub') {
+    const name = `TERRAIN_${sec.terrain.toUpperCase()}_${sec.sub.toUpperCase()}`;
+    let out=`# ${sec.terrain} — ${sec.sub}\nconst ${name} = [\n`;
+    items.forEach(i=>{out+=`\t"${esc(i)}",\n`;});
+    return out+']';
+  }
+  if (type==='vocab') {
+    const name = `VOCAB_${sec.pos.toUpperCase()}`;
+    let out=`# Vocabulary pool — ${sec.pos}\nconst ${name} = [\n`;
+    items.forEach(it=>{
+      const tagsStr=(it.tags||[]).map(t=>`"${esc(t)}"`).join(', ');
+      out+=`\t{"word": "${esc(it.word)}", "def": "${esc(it.def)}", "tags": [${tagsStr}]},\n`;
+    });
+    return out+']';
+  }
+
+  const constName = (sec.sub||currentSection).toUpperCase().replace(/[^A-Z0-9]/g,'_');
+  let out=`const ${constName} = [\n`;
+  items.forEach(i=>{out+=`\t"${esc(i)}",\n`;});
+  return out+']';
+}
+
+function copyExport() {
+  const box=document.getElementById('export-area');
+  if(!box)return;
+  navigator.clipboard.writeText(box.textContent).then(()=>{
+    notify('Copied to clipboard');
+  }).catch(()=>{
+    const ta=document.createElement('textarea');
+    ta.value=box.textContent;
+    document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);
+    notify('Copied to clipboard');
+  });
+}
+
+// ── MOBILE TAB NAVIGATION ────────────────────────────
+let currentTab = 'browse';
+
+function isMobile() { return window.innerWidth <= 700; }
+
+function showTab(tab) {
+  currentTab = tab;
+  if (!isMobile()) return;
+  const sidebar = document.getElementById('sidebar');
+  const editor = document.getElementById('editor');
+  const preview = document.getElementById('preview');
+  [sidebar, editor, preview].forEach(el => { if(el) el.classList.remove('mobile-active'); });
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  const tabMap = { browse: sidebar, edit: editor, preview: preview };
+  const active = tabMap[tab];
+  if (active) active.classList.add('mobile-active');
+  const btnMap = { browse: 'tab-browse', edit: 'tab-edit', preview: 'tab-preview' };
+  const btn = document.getElementById(btnMap[tab]);
+  if (btn) btn.classList.add('active');
+}
+
+function applyMobileLayout() {
+  if (isMobile()) {
+    showTab(currentTab);
+  } else {
+    // On desktop ensure all panels visible
+    ['sidebar','editor','preview'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) { el.classList.remove('mobile-active'); }
+    });
+  }
+}
+
+// Auto-switch to edit panel when user selects a category on mobile
+const _origSwitchSection = switchSection;
+function switchSection(key) {
+  _origSwitchSection(key);
+  if (isMobile()) showTab('edit');
+}
+
+// Auto-switch to preview when rolling
+function rollAndShow() {
+  refreshPreview();
+  if (isMobile()) showTab('preview');
+}
+
+window.addEventListener('resize', applyMobileLayout);
+
+loadSaved();
+renderAll();
+applyMobileLayout();
+
+window.addEventListener('beforeunload', e => {
+  if(isDirty){ e.preventDefault(); e.returnValue=''; }
+});
+</script>
+</body>
+</html>
